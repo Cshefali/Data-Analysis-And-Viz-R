@@ -6,8 +6,11 @@
 #Stdha.com
 
 library(ggplot2)
+library(ggpubr)
 library(dplyr)
 library(grid)
+library(gridExtra)
+
 
 #create dataframe
 df <- data.frame(x = 1:3, y = 1:3, 
@@ -57,11 +60,64 @@ sp2+
 #Static annotations remain at same coordinate in every panel of facet.
 
 #create a text
-grob <- grobTree(textGrob("Scatter plot", x=0.1,  y=0.95, hjust=0,
+grob <- grobTree(textGrob("Scatter plot", x=0.3,  y=0.95, hjust=0,
                           gp=gpar(col="red", fontsize=13, fontface="italic")))
 # Plot
 sp2 + annotation_custom(grob)
 
 #demo of grob text position in every facet. Same position.
 sp2 + annotation_custom(grob)+facet_wrap(~cyl, scales="free")
-  
+
+#PRINTING A PARAGRAPH
+#URL- https://www.rdocumentation.org/packages/ggpubr/versions/0.6.0/topics/text_grob
+
+text <- paste("iris data set gives the measurements in cm",
+              "of the variables sepal length and width",
+              "and petal length and width, respectively,",
+              "for 50 flowers from each of 3 species of iris.",
+              "The species are Iris setosa, versicolor, and virginica.", sep = "\n")
+
+# Create a text grob
+tgrob <- text_grob(text, face = "italic", color = "steelblue")
+# Draw the text
+as_ggplot(tgrob)
+
+#Applying same rule on mtcars graph. 
+#The paragraph should be present below the graph.
+
+sp2+
+  theme(plot.margin = unit(c(t=1,r=0.5,b=5,l=1), "cm"))+
+  annotation_custom(tgrob, xmin = unit(0,"npc"),
+                    xmax = unit(5.5, "npc"),
+                    ymin = -10, ymax = -1)
+
+# annotation_custom(tableGrob(mytable, rows=NULL), 
+#                   xmin=unit(11.5,"npc"),
+#                   xmax = unit(14,"npc"),  
+#                   ymin=3.7, ymax=7)
+#   
+
+#---------------
+#URL- https://stackoverflow.com/questions/54271994/adding-text-outside-ggplot?rq=3
+
+#Adding a table to RHS of the plot
+
+A <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+B <- c(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
+C <- data.frame(A, B)
+
+mytable<-cbind(c("variable_1","variable_2","variable_3"),c(0.5,1.5,3.5))
+ggplot(data = C) + geom_point(mapping = aes(x = A, y = B)) + 
+  labs(title = "Plot") + theme(plot.title = element_text(hjust = 0.5))+
+  theme(plot.margin = unit(c(1,5,1,1),"cm"))+
+  annotation_custom(tableGrob(mytable, rows=NULL), 
+                    xmin=unit(11.5,"npc"),xmax = unit(14,"npc"),  
+                    ymin=3.7, ymax=7)
+
+#create rectangle around the table
+grid.rect(x=unit(0.83,"npc"),y=unit(0.5,"npc") ,
+          width = unit(0.22,"npc"), height = unit(0.16,"npc"), 
+          gp = gpar(lwd = 3, col="black", fill = NA))
+
+
+#-------------
