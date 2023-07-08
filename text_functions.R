@@ -140,3 +140,14 @@ p2 <- ggplot(data = C) + geom_point(mapping = aes(x = A, y = B)) +
 p2 + plot_spacer() + tgrob + plot_layout(ncol = 1, nrow = 3, heights = c(10,-4,12))
 ggsave(filename = "plot_with_para.png", width = 3.37, 
        height = 3.55, units = "in")
+
+#TRY TO SET HEIGHT OF EACH PLOT DYNAMICALLY.
+#FETCH THE DIMENSIONS OF GRAPHICS WINDOW AND THEN SET HEIGHT OF PLOT
+
+window_dims <- dev.size("cm")
+
+p2 + plot_spacer() + as_ggplot(tgrob) + 
+  plot_layout(nrow = 3, heights = c(window_dims[2]*1.5, -4, window_dims[2]*2.5))
+
+ggsave(filename = "plot_with_para.png", width = 3.37, 
+       height = 3.55, units = "in")
