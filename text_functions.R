@@ -8,9 +8,12 @@
 library(ggplot2)
 library(ggpubr)
 library(dplyr)
+library(stringr)
 library(grid)
 library(gridExtra)
+library(patchwork)
 
+setwd("C:/Users/shefa/Desktop/Github/Data-Visualization-R")
 
 #create dataframe
 df <- data.frame(x = 1:3, y = 1:3, 
@@ -78,7 +81,7 @@ text <- paste("iris data set gives the measurements in cm",
               "The species are Iris setosa, versicolor, and virginica.", sep = "\n")
 
 # Create a text grob
-tgrob <- text_grob(text, face = "italic", color = "steelblue")
+tgrob <- text_grob(text, face = "italic", color = "steelblue", size = 3)
 # Draw the text
 as_ggplot(tgrob)
 
@@ -110,14 +113,30 @@ mytable<-cbind(c("variable_1","variable_2","variable_3"),c(0.5,1.5,3.5))
 ggplot(data = C) + geom_point(mapping = aes(x = A, y = B)) + 
   labs(title = "Plot") + theme(plot.title = element_text(hjust = 0.5))+
   theme(plot.margin = unit(c(1,5,1,1),"cm"))+
-  annotation_custom(tableGrob(mytable, rows=NULL), 
-                    xmin=unit(11.5,"npc"),xmax = unit(14,"npc"),  
+  annotation_custom(tableGrob(mytable, rows = NULL), 
+                    xmin=unit(12,"npc"),xmax = unit(16,"npc"),  
                     ymin=3.7, ymax=7)
 
 #create rectangle around the table
 grid.rect(x=unit(0.83,"npc"),y=unit(0.5,"npc") ,
-          width = unit(0.22,"npc"), height = unit(0.16,"npc"), 
+          width = unit(0.25,"npc"), height = unit(0.16,"npc"), 
           gp = gpar(lwd = 3, col="black", fill = NA))
 
 
 #-------------
+
+##USING PATCHWORK TO ADD PARAGRAPH BELOW PLOT
+
+# Create a text grob
+tgrob <- text_grob(text, face = "italic", color = "steelblue", size = 7.5)
+
+p1 <- as_ggplot(tgrob)+
+      theme(plot.margin = unit(c(0,0,0,0), "cm"))
+
+p2 <- ggplot(data = C) + geom_point(mapping = aes(x = A, y = B)) + 
+        labs(title = "Plot") + theme(plot.title = element_text(hjust = 0.5))+
+        theme(plot.margin = unit(c(0,0,0,0), "cm"))
+
+p2 + plot_spacer() + tgrob + plot_layout(ncol = 1, nrow = 3, heights = c(10,-4,12))
+ggsave(filename = "plot_with_para.png", width = 3.37, 
+       height = 3.55, units = "in")
