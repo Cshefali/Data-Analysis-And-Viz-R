@@ -21,6 +21,8 @@ df <- data.frame("id" = id, "dob" = dob, "lname" = lname)
 result <- df[duplicated(df[,2:3]) | duplicated(df[,2:3], fromLast = T),]
 View(result)
 
+#-----------------------------------------------------------------------------
+
 ##2.Rows with missing values
 
 col1 <- c(1:6)
@@ -31,8 +33,27 @@ df <- data.frame(col1 = col1, col2 = col2, col3 = col3)
 #filter rows with missing values in any column
 df_na <- df[!complete.cases(df),]
 
+#-----------------------------------------------------------------------------
 
 ##3. Compare 2 columns and filter values not present in one or the other
 
 #match() returns index postion of 'value1' of first vector in second vec.
 
+#-----------------------------------------------------------------------------
+
+##4. Print values in a list separated by comma
+#HELP- https://stackoverflow.com/questions/6347356/creating-a-comma-separated-vector
+
+#METHOD 1- all individual elements come under one quotation mark.
+# "shef, avril, maya"
+list1 = list("shef", "avril", "maya")
+paste(list1, collapse = ", ")
+
+#METHOD 2- individual elements get separated by comma and their own "".
+# "shef", "avril", "maya"
+
+cat(paste(shQuote(list1, type = "cmd"), collapse = ", "))
+
+#----------------------------------------------------------------------
+
+##5. 
