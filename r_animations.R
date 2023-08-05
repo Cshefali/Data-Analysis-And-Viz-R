@@ -10,7 +10,9 @@ library(ggthemes)
 library(gapminder)
 library(gifski)
 
-str(gapminder)
+#str(gapminder)
+
+##GRAPH 1- Gapminder
 
 graph1 <- gapminder %>% 
               ggplot(aes(x = gdpPercap, y = lifeExp, color = continent, size = pop))+
@@ -41,3 +43,11 @@ graph1 <- gapminder %>%
                       transition_time(time = year) +
                       labs(subtitle = "Year: {frame_time}")+
                       shadow_wake(wake_length = 0.1))
+
+#Saving the animation
+animate(graph1.animation, height = 500, width = 800, fps = 30,
+        duration = 10, end_pause = 60, res = 100)
+
+gganimate::anim_save("gapminder_graph.gif")
+
+##GRAPH 2- 
