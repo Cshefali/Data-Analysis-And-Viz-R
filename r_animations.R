@@ -12,7 +12,7 @@ library(gifski)
 
 #str(gapminder)
 
-##GRAPH 1- Gapminder
+##GRAPH 1- Gapminder; Bubble Chart Animation
 
 graph1 <- gapminder %>% 
               ggplot(aes(x = gdpPercap, y = lifeExp, color = continent, size = pop))+
@@ -50,4 +50,57 @@ animate(graph1.animation, height = 500, width = 800, fps = 30,
 
 gganimate::anim_save("gapminder_graph.gif")
 
-##GRAPH 2- 
+##GRAPH 2- Video Game Sales Line Chart animation
+video_games <- read_csv(file = paste0(getwd(),"/data/video_game_sales/vgsales.csv"))
+
+#summarize the data
+game_data <- video_games %>% 
+                filter(Platform == "PS3",
+                       Genre %in% c("Action", "Shooter", "Sports", "Racing", "Simulation")) %>% 
+                drop_na() %>% 
+                group_by(Year, Genre) %>% 
+                summarize(sales = sum(Global_Sales, na.rm = T))
+
+#base plot
+game_data %>% 
+  ggplot(aes(x = Year, y = sales, color = Genre))+
+  geom_line(linewidth = 2, alpha = 0.75)+
+  theme_solarized_2(light = F)+
+  labs(title = "Video Game Sales",
+       y = "Global Sales")+
+  theme(text = element_text(family = "DM Sans Medium", colour = "#EEEEEE"),
+        title = element_text(color = "#EEEEEE"),
+        axis.title.x = element_blank(),
+        panel.background = element_rect(fill = NA),
+        plot.background = element_rect(fill = "#111111"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5)) +
+  scale_color_brewer(palette = "Pastel1") +
+  geom_point() +
+  scale_x_continuous(breaks = 0:2100)
+
+
+graph2<- game_data %>%
+  ggplot(aes(x=Year, y=sales, color=Genre)) +
+  geom_line(linewidth = 2, alpha = 0.75) +
+  theme_solarized_2(light = FALSE) +
+  labs(title = "Video Game Sales",
+       y = "Global Sales") +
+  theme(text = element_text(family = "DM Sans Medium", colour = "#EEEEEE"),
+        title = element_text(color = "#EEEEEE"),
+        axis.title.x = element_blank(),
+        panel.background = element_rect(fill = NA),
+        plot.background = element_rect(fill = "#111111"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5)) +
+  scale_color_brewer(palette = "Pastel1") +
+  geom_point() +
+  scale_x_continuous(breaks = 0:2100)
