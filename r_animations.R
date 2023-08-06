@@ -9,6 +9,13 @@ library(gganimate)
 library(ggthemes)
 library(gapminder)
 library(gifski)
+#for fonts
+library(extrafont)
+
+#import fonts
+font_import()
+#load the fonts
+loadfonts(device = "win")
 
 #str(gapminder)
 
@@ -55,11 +62,16 @@ video_games <- read_csv(file = paste0(getwd(),"/data/video_game_sales/vgsales.cs
 
 #summarize the data
 game_data <- video_games %>% 
+                #convert year to numeric.
+                mutate(Year = as.numeric(Year)) %>% 
                 filter(Platform == "PS3",
                        Genre %in% c("Action", "Shooter", "Sports", "Racing", "Simulation")) %>% 
                 drop_na() %>% 
                 group_by(Year, Genre) %>% 
                 summarize(sales = sum(Global_Sales, na.rm = T))
+
+
+
 
 #base plot
 game_data %>% 
@@ -84,23 +96,34 @@ game_data %>%
   scale_x_continuous(breaks = 0:2100)
 
 
-graph2<- game_data %>%
-  ggplot(aes(x=Year, y=sales, color=Genre)) +
-  geom_line(linewidth = 2, alpha = 0.75) +
-  theme_solarized_2(light = FALSE) +
-  labs(title = "Video Game Sales",
-       y = "Global Sales") +
-  theme(text = element_text(family = "DM Sans Medium", colour = "#EEEEEE"),
-        title = element_text(color = "#EEEEEE"),
-        axis.title.x = element_blank(),
-        panel.background = element_rect(fill = NA),
-        plot.background = element_rect(fill = "#111111"),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        legend.background = element_blank(),
-        legend.key = element_blank(),
-        legend.position = "bottom",
-        plot.title = element_text(hjust = 0.5)) +
-  scale_color_brewer(palette = "Pastel1") +
-  geom_point() +
-  scale_x_continuous(breaks = 0:2100)
+graph2<- game_data %>% 
+            ggplot(aes(x = Year, y = sales, color = Genre))+
+            geom_line(linewidth = 2, alpha = 0.75)+
+            theme_solarized_2(light = F)+
+            labs(title = "Video Game Sales",
+                 y = "Global Sales")+
+            theme(text = element_text(family = "DM Sans Medium", colour = "#EEEEEE"),
+                  title = element_text(color = "#EEEEEE"),
+                  axis.title.x = element_blank(),
+                  panel.background = element_rect(fill = NA),
+                  plot.background = element_rect(fill = "#111111"),
+                  panel.grid.major = element_blank(),
+                  panel.grid.minor = element_blank(),
+                  legend.background = element_blank(),
+                  legend.key = element_blank(),
+                  legend.position = "bottom",
+                  plot.title = element_text(hjust = 0.5)) +
+            scale_color_brewer(palette = "Pastel1") +
+            geom_point() +
+            scale_x_continuous(breaks = 0:2100)
+
+#animate
+graph2.animation <- graph2+
+                      transition_reveal(along = Year)+
+                      view_follow(fixed_y = T)
+
+animate(graph2.animation, height = 500, width = 800, end_pause = 60,
+        duration = 10, fps = 30, res = 100)
+
+#save the graph
+anim_save(filename = "video_games_sales.gif")
