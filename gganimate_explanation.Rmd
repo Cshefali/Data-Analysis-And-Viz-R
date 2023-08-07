@@ -1,0 +1,76 @@
+---
+title: "Creating animations in R- detailed explanation"
+author: "Shefali C."
+date: "2023-08-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This notebook explains some **`ggaminate`** function in detail.  
+Refer [r-bloggers.com](https://www.r-bloggers.com/2021/05/animated-graph-gif-with-gganimate-ggplot/) for concise code.  
+
+
+```{r load-libraries, warning=FALSE, message=FALSE}
+#load libraries
+library(tidyverse)
+library(gganimate)
+library(ggthemes)
+library(gapminder)
+library(gifski)
+#for fonts
+library(extrafont)
+```
+
+#### Explanation for some functions used in the code below:  
+
+1. **`theme_fivethirtyeight()`**- applies the graph theme used on website **[FiveThirtyEight](https://projects.fivethirtyeight.com/biden-approval-rating/?ex_cid=rrpromo).** Another function commonly used along with this theme is **`scale_color_fivethirtyeight()`**.  
+
+2. **`scale_size(range = c(2,12), guide = "none")`-** **scale_size()** function
+
+
+
+
+
+```{r}
+##GRAPH 1- Gapminder; Bubble Chart Animation
+
+graph1 <- gapminder %>% 
+              ggplot(aes(x = gdpPercap, y = lifeExp, color = continent, size = pop))+
+              geom_point(alpha = 0.7, stroke = 0)+
+              theme_fivethirtyeight()+
+              scale_size(range = c(2,12), guide = "none")+
+              scale_x_log10()+
+              
+              labs(title = "Life Expectancy vs GDP",
+                   x = "GDP",
+                   y = "Life Expectancy",
+                   caption = "Source: Gapminder",
+                   #this controls the title of continent legend;
+                   #since color aesthetic has been used for continents in ggplot() line
+                   color = "Continent")+
+              
+              #axis.title = element_text() is required to display the x and y title here.
+              theme(axis.title = element_text(),
+                    
+                    ##Font family gives warnings.
+                    #text = element_text(family = "Rubik"),
+                    
+                    legend.text = element_text(size = 10))+
+              scale_color_brewer(palette = "Set2")
+```
+
+A crucial but overlooked component of ggplots is the **size** aesthetic. I googled what does **"pts"** really mean as a unit of size in ggplot2?  
+I'm writing a short note about this below; for an amazing explanation, refer to this [stackoverflow answer](https://stackoverflow.com/questions/17311917/ggplot2-the-unit-of-size). Go through the entire chain of comments, not just the green-ticked answer. In one of the comments, Hadley Wickham, the chief scientist at RStudio (username- hadley) has clarified that default unit of ggplot2 is "mm" not pts. And he has updated the value of '.pts' to (72.27/25.4) in aaa-constants.r script. So, this implies when size = 3 is basically 3mm & internally, this is converted to (3 x (72.27/25.4)) pts.
+
+- So, "pts" basically means *points*. When we write `geom_point(size = 3)`, the size of points in the scatter plot will be 3 mm. But if unit is specified as "pts", then how much (how long, how wide) will be 3 pts??  
+
+- **1 inch = 72.27 pts**. Internally, ggplot() multiplies this size aes with $1 / 0.352777778$ to render the plot. Now where did this factor come from?  
+
+- This number is basically the conversion factor between units "mm" and "pts". **72pts = 1 inch**. This implies, **1 pt = 1 / 72 inches**. **1 inch = 25.4 mm**.  So, **1/72 inches = 25.4/72 mm**. But, **1/72 inches means 1 pt**, which implies **1 pt = 25.4/72 mm**. Hence, **1 pt = 0.3527777 mm**.  
+
+- Internally, ggplot2 calculates fontsize as `fontsize = size x ggplot2:::.pt`. In the script, **aaa-constants.r**, this **.pt** has been defined as **1/0.3527777**.
+
+
