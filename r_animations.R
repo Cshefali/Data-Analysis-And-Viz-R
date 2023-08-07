@@ -25,7 +25,7 @@ graph1 <- gapminder %>%
               ggplot(aes(x = gdpPercap, y = lifeExp, color = continent, size = pop))+
               geom_point(alpha = 0.7, stroke = 0)+
               theme_fivethirtyeight()+
-              scale_size(range = c(2,12), guide = "none")+
+              scale_size(range = c(2,10), guide = "none")+
               scale_x_log10()+
               
               labs(title = "Life Expectancy vs GDP",
