@@ -150,4 +150,6 @@ title <- ggplot(title_text, aes(x = x, y = y)) +
 
 #save the image
 
-ggsave(filename = "consumer_confidence.png", bg = bg)
+ggsave(filename = "consumer_confidence.png", 
+       path = paste0(getwd(),"/images"),
+       bg = bg)
