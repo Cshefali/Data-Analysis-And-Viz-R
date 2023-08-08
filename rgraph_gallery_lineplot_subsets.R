@@ -14,17 +14,23 @@ library(MetBrewer)
 library(scico)
 
 #Load and prepare data
+
+#load data on Consumer Confidence from RGraphGallery Repo
 df1 <- read_csv("https://raw.githubusercontent.com/holtzy/R-graph-gallery/master/DATA/dataConsumerConfidence.csv")
 
 #str(df1)
 
 #Time column is in character format; will be converted to date-type
 df2 <- df1 %>% 
-        mutate(date = lubridate::my(Time)) %>% 
+
+        #"Sep-2019" becomes "2019-09-01"
+        mutate(date = lubridate::my(Time)) %>%
+        #remove the Time column now
         select(-Time)
 
 #convert data into long format
 df2 <- df2 %>% 
+        #keep 3 columns only, date, country name, confidence value.
         pivot_longer(cols = !date, names_to = "country", values_to = "value")
 
 #remove NA
