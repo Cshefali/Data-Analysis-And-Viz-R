@@ -123,5 +123,39 @@ caption_text  <- str_glue("**Design:** Gilbert Fontana<br>","**Data:** OECD, 202
 subtitle_text <- tibble(x = 0, y = 0,
                    label = "The optimal inflation rate\nfor any country is 2%")
 
-(subtitle_plot <- ggplot(data = subtitle_text, aes(x = x, y = y))+
-                    geom_textbox(aes(label = label)))
+(subtitle <- ggplot(data = subtitle_text, aes(x = x, y = y))+
+                    geom_textbox(aes(label = label), box.color = bg, fill = bg,
+                                 width = unit(10, units = "lines"), family =font,
+                                 size = 3, lineheight = 1)+
+                    coord_cartesian(clip = "off", expand = F)+
+                    theme_void()+
+                    theme(plot.background = element_rect(fill = bg, color = bg))
+)
+
+#title
+title_text <- tibble(x = 0, y = 0,
+                     label = "Inflation of High GDP countries in 2020")
+
+(title <- ggplot(data = title_text, aes(x = x, y = y, label = label))+
+                geom_textbox(box.color = bg, fill = bg, width = unit(12, units = "lines"),
+                             family = font, size = 5, lineheight = 1)+
+                theme_void()+
+                theme(plot.background = element_rect(fill = bg, color = bg))
+)
+
+##FINAL PLOT WITH TITLE AND SUBTITLE
+(title + subtitle)/inflation_plot +
+  plot_layout(height = c(0.5,2.5))+
+  plot_annotation(
+              caption = caption_text,
+              theme = theme(
+                plot.caption = element_markdown(hjust=0, margin=margin(20,0,0,0), size=6, color=txt_col, lineheight = 1.2),
+                plot.margin = margin(20,20,20,20)
+                            )#theme
+                  )#plot annotation
+
+#save the image
+
+ggsave(filename = "world_bank_inflation.png", 
+       path = paste0(getwd(),"/images"),
+       bg = bg)
