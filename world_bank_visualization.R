@@ -81,7 +81,7 @@ txt_col <- "black"
 showtext_auto(enable = TRUE)
 
 #set caption of plot
-caption_text  <- str_glue("**Design:** Gilbert Fontana<br>","**Data:** OECD, 2022")
+caption_text  <- str_glue("**Design by:** Gilbert Fontana<br>","**Data: ** World Bank")
 
 
 
@@ -97,7 +97,7 @@ caption_text  <- str_glue("**Design:** Gilbert Fontana<br>","**Data:** OECD, 202
                     #add annual inflation value in 2020 at the end of each line
                     geom_text(data = data_inflation_2020, aes(x = year, y = annual_inflation_perc, 
                                                               label = round(annual_inflation_perc,2), color = country),
-                                      hjust = -0.5, vjust = -0.5, fontface = "bold", family = font)+
+                                      hjust = -0.5, vjust = -0.5, fontface = "bold", family = font, size = 2)+
                     scale_color_met_d(name = "Redon")+
                     coord_cartesian(clip = "off")+
                     scale_y_continuous(breaks = c(-2, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18),
@@ -121,12 +121,12 @@ caption_text  <- str_glue("**Design:** Gilbert Fontana<br>","**Data:** OECD, 202
 #subtitle
 
 subtitle_text <- tibble(x = 0, y = 0,
-                   label = "The optimal inflation rate\nfor any country is 2%")
+                   label = "The optimal inflation rate for any country is 2%. Source: Investopedia.com")
 
 (subtitle <- ggplot(data = subtitle_text, aes(x = x, y = y))+
                     geom_textbox(aes(label = label), box.color = bg, fill = bg,
                                  width = unit(10, units = "lines"), family =font,
-                                 size = 3, lineheight = 1)+
+                                 size = 7, lineheight = 0.5)+
                     coord_cartesian(clip = "off", expand = F)+
                     theme_void()+
                     theme(plot.background = element_rect(fill = bg, color = bg))
@@ -137,8 +137,8 @@ title_text <- tibble(x = 0, y = 0,
                      label = "Inflation of High GDP countries in 2020")
 
 (title <- ggplot(data = title_text, aes(x = x, y = y, label = label))+
-                geom_textbox(box.color = bg, fill = bg, width = unit(12, units = "lines"),
-                             family = font, size = 5, lineheight = 1)+
+                geom_textbox(box.color = bg, fill = bg, width = unit(8, units = "lines"),
+                             family = font, size = 7, lineheight = 0.5)+
                 theme_void()+
                 theme(plot.background = element_rect(fill = bg, color = bg))
 )
@@ -149,8 +149,9 @@ title_text <- tibble(x = 0, y = 0,
   plot_annotation(
               caption = caption_text,
               theme = theme(
-                plot.caption = element_markdown(hjust=0, margin=margin(20,0,0,0), size=6, color=txt_col, lineheight = 1.2),
-                plot.margin = margin(20,20,20,20)
+                plot.caption = element_markdown(hjust=0, margin=margin(20,0,0,0), 
+                                                size=9, color=txt_col, lineheight = 0.8),
+                plot.margin = margin(10,10,10,10)
                             )#theme
                   )#plot annotation
 
