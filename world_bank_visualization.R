@@ -99,10 +99,10 @@ caption_text  <- str_glue("**Design by:** Gilbert Fontana<br>","**Data: ** World
                                                               label = round(annual_inflation_perc,2), color = country),
                                       hjust = -0.5, vjust = -0.5, fontface = "bold", family = font, size = 2)+
                     scale_color_met_d(name = "Redon")+
-                    coord_cartesian(clip = "off")+
                     scale_y_continuous(breaks = c(-2, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18),
                                        labels = c("","","2",rep("",8)))+
                     facet_wrap(~country)+
+                    coord_cartesian(clip = "off")+
                     theme(
                       axis.title = element_blank(),
                       axis.text = element_text(size = 7, color = txt_col),
@@ -112,7 +112,7 @@ caption_text  <- str_glue("**Design by:** Gilbert Fontana<br>","**Data: ** World
                       plot.caption = element_markdown(hjust=.5, margin=margin(60,0,0,0), size=8, color=txt_col, lineheight = 1.2),
                       plot.caption.position = "plot",
                       plot.background = element_rect(color = bg, fill = bg),
-                      plot.margin = margin(10,10,10,10),
+                      plot.margin = margin(5,5,5,5),
                       legend.position = "none"
                     ))
 
@@ -121,7 +121,7 @@ caption_text  <- str_glue("**Design by:** Gilbert Fontana<br>","**Data: ** World
 #subtitle
 
 subtitle_text <- tibble(x = 0, y = 0,
-                   label = "The optimal inflation rate for any country is 2%. Source: Investopedia.com")
+                   label = "The optimal inflation rate for any country is ~2%. Source: Investopedia.com")
 
 (subtitle <- ggplot(data = subtitle_text, aes(x = x, y = y))+
                     geom_textbox(aes(label = label), box.color = bg, fill = bg,
