@@ -8,6 +8,8 @@ library(lubridate)
 library(patchwork)
 library(ggtext)
 library(showtext)
+library(plotly)
+library(tmap)
 
 
 #data prep
@@ -43,36 +45,64 @@ wb_data <- wb_data %>%
 #add year column
 wb_data$year <- lubridate::year(wb_data$date)
 
+#----------COUNTRY DATA----------
+
 #remove rows from world data with following keywords to get only official countries
-keywords <- "dividend|income|Asia|Euro|OECD|small states|IDA|IBRD|Middle East|island|countries|Eastern|Western|Southern|world|Latin America|Sahara"
+#keywords <- "dividend|income|Asia|Euro|OECD|small states|IDA|IBRD|Middle East|island|countries|Eastern|Western|Southern|world|Latin America|Sahara"
 
 
 #filter out only legit countries 
-countries_data <- wb_data[-grep(pattern = keywords, wb_data$country, ignore.case = T),]
+# countries_data <- wb_data[-grep(pattern = keywords, wb_data$country, ignore.case = T),]
+# 
+# #removing "Noth America" separately
+# countries_data <- countries_data[-grep(pattern  ="North America", countries_data$country,
+#                                        ignore.case = T),]
 
-#removing "Noth America" separately
-countries_data <- countries_data[-grep(pattern  ="North America", countries_data$country,
-                                       ignore.case = T),]
+#-----------------------------------
 
 #Filter out only World data
 world_data <- wb_data[grep(pattern = "world", wb_data$country, ignore.case = T),]
 #removing rows with "Arab World" in them
 world_data <- world_data[-grep(pattern = "Arab World", world_data$country, ignore.case = T),]
 
+#number of missing values in each column
+View(rbind(colSums(is.na(world_data))))
+
+#removing column 'human capital index' as it contains no values
+world_data <- world_data %>% select(-human_capital_index)
 
 ##WORLD DATA VISUALIZATIONS
 
 #line chart for population density.
-ggplot(data = world_data, aes(x = year))+
-  geom_line(aes(y = population_density), color = "#076FA1")+
-  geom_line(aes(y = agri_land_perc), color = "darkgreen")+
-  scale_y_continuous(limits = c(0,80),
-                     breaks = seq(0,80,10),
-                     labels = seq(0,80,10))+
-  scale_x_continuous(limits = c(1960,2022),
-                     breaks = seq(1960,2022,10),
-                     labels = seq(1960,2022,10))+
-  theme_fivethirtyeight()+
-  theme(panel.grid = element_line(color = "white"),
-        #panel.background = element_rect(fill = "white")
-        )
+(line_chart1 <- ggplot(data = world_data)+
+                  geom_line(aes(x = year, y = population_density), 
+                            color = "#076FA1", na.rm = T)+
+                  scale_y_continuous(limits = c(20,65),
+                                     breaks = seq(20, 65, by = 5),
+                                     labels = seq(20, 65, by = 5))+
+                  scale_x_continuous(limits = c(1960,2020),
+                                     breaks = seq(1960,2022,10),
+                                     labels = seq(1960,2022,10))+
+                  labs(
+                       x = "",
+                       y = "population density")+
+                  theme_fivethirtyeight(base_size = 10)+
+                  theme(axis.title.y = element_text()))
+
+#making the line chart interactive
+# ggplotly(line_chart1) %>% 
+#   layout(title = list(text = paste0("Growth in world's population density (1960-2020)",
+#                                     "<br>",
+#                                     "<sup>",
+#                                     "Population density- people per sq. km of land area.",
+#                                     "</sup>")))
+
+line_chart_i <- plotly_build(line_chart1)
+
+#Modifying the tooltip content.
+line_chart_i$x$data[[1]]$text <- str_glue("Year: {world_data$year}", 
+                                          "<br>",
+                                          "Pop. density: {world_data$population_density}")
+
+#World Maps
+
