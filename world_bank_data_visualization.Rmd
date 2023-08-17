@@ -11,8 +11,14 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
-                      fig.align = 'center', fig.height = 4, fig.width = 6)
+knitr::opts_chunk$set(
+	echo = TRUE,
+	fig.align = "center",
+	fig.height = 4,
+	fig.width = 6,
+	message = FALSE,
+	warning = FALSE
+)
 ```
 
 This notebook contains visualizations of a few World Bank indicators for the top 6 economies of the world. It also contains a few plots for the Global emission data ($CO_2$ & Greenhouse Gases).  
@@ -21,13 +27,12 @@ This notebook contains visualizations of a few World Bank indicators for the top
 
 ```{r load-libraries, warning=F, message=FALSE}
 
-library(tidyverse) # metapackage of all tidyverse packages
+library(tidyverse)
 library(ggthemes)
 library(lubridate)
 library(plotly)
 library(patchwork)
 library(gghighlight)
-library(emo)
 
 ```  
 
@@ -303,6 +308,18 @@ exp_2019 <- r_and_d_data %>%
                         geom_line(aes(color = country), na.rm = T, linewidth = 1)+
                         geom_point(data = exp_2019, aes(x = year, y = r_and_d_exp_perc, color = country), 
                                    shape = 16, na.rm = T)+
+                        #label box for India
+                        annotate(geom = "label", x = 2002, y = 0.7, label = "India", color = "#7ad2f6", size = 2)+
+                        #label box for UK
+                        annotate(geom = "label", x = 2002, y = 1.7, label = "UK", color = "#76c0c1", size = 2)+
+                        #label box for China
+                        annotate(geom = "label", x = 2002, y = 1.2, label = "China", color = "#6794a7", size = 2)+
+                        #label box for Germany
+                        annotate(geom = "label", x = 2002, y = 2.3, label = "Germany", color = "#014d64", size = 2)+
+                        #label box for Japan
+                        annotate(geom = "label", x = 2002, y = 3.1, label = "Japan", color = "#01a2d9", size = 2)+
+                        #label box for USA
+                        annotate(geom = "label", x = 2002, y = 2.6, label = "USA", color = "#00887d", size = 2)+
 
                         coord_cartesian(clip = "off")+
                         scale_x_continuous(breaks = seq(2000,2019,2),
@@ -319,16 +336,43 @@ exp_2019 <- r_and_d_data %>%
                         axis.text.y = element_text(size = 6, face = "bold")
                         )
 )
+    
 ```
 
-##### Steps to make the linechart interactive
+##### Steps to make the linechart interactive  
+
+The label boxes for each country have been removed below to prevent cluttering in the final interactive plot. **`research_lineplot2`** is the same linechart as above except for the label boxes.  
+
+```{r research-lineplot2}
+research_lineplot2 <- r_and_d_data %>%
+                        ggplot(aes(x = year, y = r_and_d_exp_perc))+
+                        geom_line(aes(color = country), na.rm = T, linewidth = 1)+
+                        geom_point(data = exp_2019, aes(x = year, y = r_and_d_exp_perc, color = country), 
+                                   shape = 16, na.rm = T)+
+
+                        coord_cartesian(clip = "off")+
+                        scale_x_continuous(breaks = seq(2000,2019,2),
+                                          labels = seq(2000,2019,2))+
+                        scale_color_economist(guide = "none")+
+                        labs(x = "", y = "R&D expenditure as % of GDP",
+                            title = "Comparison of emphasis given to R&D by the 6 countries (2000-2019)",
+                            subtitle = "Data for year 2019 for India is unknown")+
+                        common_theme+
+                        theme(plot.title = element_text(size = 9),
+                        plot.subtitle = element_text(margin = margin(t=5, b = 25), size = 8),
+                        axis.title.y = element_text(margin = margin(r=7), size = 7),
+                        axis.text.x = element_text(size = 6, face = "bold"),
+                        axis.text.y = element_text(size = 6, face = "bold")
+                        )
+    
+```
 
 Applying **`plotly_build()`** renders the above graph interactive. But it adds a legend which was explicitly omitted in the code above!  
 
 
 ```{r interactive-linechart, fig.align='center'}
 #convert the plot to interactive
-(research_lineplot_i <- plotly_build(research_lineplot))
+(research_lineplot_i <- plotly_build(research_lineplot2))
 
 ```
 
