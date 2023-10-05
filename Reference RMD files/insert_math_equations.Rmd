@@ -1,0 +1,25 @@
+---
+title: "Adding Mathematical Equations in RMarkdown"
+author: "Shefali C."
+date: "2023-08-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+I'm creating this record to frequently refer when creating technical documents.  
+
+Help taken from- [Blog by "R Pruim"](https://rpruim.github.io/s341/S19/from-class/MathinRmd.html#:~:text=Math%20inside%20RMarkdown,%24%24%20for%20%E2%80%9Cdisplayed%20equations%E2%80%9D.)  
+
+Mathematical representations with RMarkdown/LaTeX notations:  
+
+
+1. $x = y$              `$x = y$`
+2. $x / y$              `$x / y$`   
+3. $x ^ y$              `$x ^ y$`  
+4. $x \le y$            `$x \le y$`  
+5. $x \ge y$            `$x \ge y$`
+
+
