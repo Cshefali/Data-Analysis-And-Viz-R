@@ -1,6 +1,6 @@
 #Data Cleaning- Glassdoor-Scraped Data Scientist Jobs
 #Author- Shefali C.
-#Last Update- Oct 31, 2023
+#Last Update- Nov 4, 2023
 
 library(tidyverse)
 library(janitor)
@@ -32,15 +32,77 @@ data <- subset(data,select = -index)
 #all unique Job Titles
 unique_titles <- data.frame(job_title = unique(data$job_title))
 
-#keywords for job title
-job_profile_keywords <- c("Data Analy", "Machine Learning", "Business Intelligence",
-                          "Analytics", "Analysis")
-
-#create a column with main job profiles
+#2. Simplify the job profiles
 data <- data %>% 
-          mutate(job_profile = case_when(
-            job_title == ""
-          ))
+  mutate(job_profile = case_when(
+    str_detect(string = job_title,
+               pattern = regex('manager', ignore_case = T)) ~ 'Manager',
+    str_detect(string = job_title,
+               pattern = regex("Business", ignore_case = T)) ~ 'Business Analyst',
+    str_detect(string = job_title,
+               pattern = regex("Model", ignore_case = T))~'Data Engineer',
+    str_detect(string = job_title,
+               pattern = regex("Data Analytics Engineer", ignore_case = T)) ~ 'Data Analyst',
+    str_detect(string = job_title, 
+               pattern = regex("(Data Scientist)|(Data Science)|(Decision Scientist)", ignore_case = T)) ~ 'Data Scientist',
+    str_detect(string = job_title,
+               pattern = regex("(Machine Learning)|ML|(Computer Vision)|(Deep Learning)|AI", ignore_case = T)) ~ 'Machine Learning Engineer',
+    str_detect(string = job_title, 
+               pattern = regex("(Data Engineer)|(Data Architect)", ignore_case = T)) ~ 'Data Engineer',
+    str_detect(string = job_title,
+               pattern = regex('Analyst|analysis', ignore_case = T)) ~ 'Data Analyst',
+    str_detect(string = job_title,
+               pattern = regex('[Computer|Computational] Scientist', ignore_case = T)) ~ 'Computer Scientist',
+    TRUE ~ NA
+  ))
+
+# temp <- data.frame(job_title = data$job_title)
+# 
+# #create a column with main job profiles
+# temp <- temp %>% 
+#   mutate(job_profile = case_when(
+#     str_detect(string = job_title,
+#                pattern = regex('manager', ignore_case = T)) ~ 'Manager',
+#     str_detect(string = job_title,
+#                pattern = regex("Business", ignore_case = T)) ~ 'Business Analyst',
+#     str_detect(string = job_title,
+#                pattern = regex("Model", ignore_case = T))~'Data Engineer',
+#     str_detect(string = job_title,
+#                pattern = regex("Data Analytics Engineer", ignore_case = T)) ~ 'Data Analyst',
+#     str_detect(string = job_title, 
+#                pattern = regex("(Data Scientist)|(Data Science)|(Decision Scientist)", ignore_case = T)) ~ 'Data Scientist',
+#     str_detect(string = job_title,
+#                pattern = regex("(Machine Learning)|ML|(Computer Vision)|(Deep Learning)|AI", ignore_case = T)) ~ 'Machine Learning Engineer',
+#     str_detect(string = job_title, 
+#                pattern = regex("(Data Engineer)|(Data Architect)", ignore_case = T)) ~ 'Data Engineer',
+#     str_detect(string = job_title,
+#                pattern = regex('Analyst|analysis', ignore_case = T)) ~ 'Data Analyst',
+#     str_detect(string = job_title,
+#                pattern = regex('[Computer|Computational] Scientist', ignore_case = T)) ~ 'Computer Scientist',
+#     TRUE ~ NA
+#   ))
 
 #seniorty keywords
-seniority_keywords <- c("Sr", "Senior", "Experienced", "Principal")
+#seniority_keywords <- c("Sr", "Senior", "Experienced", "Principal")
+
+#3. Seniority level
+data$senior <- ifelse(str_detect(data$job_title, 
+                                 pattern = regex('Sr|Senior|Experienced|Principal|Lead|manager',
+                                                 ignore_case = T)), 1, 0)
+
+#4. Salary 
+unique(data$salary_estimate)
+
+#remove the 'Glassdoor est.' part
+data$salary_estimate <- gsub(pattern = " \\(.*", replacement = "",
+                             x = data$salary_estimate)
+
+#create new salary column and modify it
+data$salary_in_1000_dollar <- data$salary_estimate
+
+#remove '$' and 'K'
+data$salary_in_1000_dollar <- gsub(pattern = regex('\\$|K'), '', data$salary_in_1000_dollar)
+
+#minimum salary range
+data$min_salary <- stringr::str_extract(data$salary_in_1000_dollar, 
+                                        pattern = regex('[0-9]+'))
