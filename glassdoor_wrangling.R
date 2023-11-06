@@ -1,6 +1,6 @@
 #Data Cleaning- Glassdoor-Scraped Data Scientist Jobs
 #Author- Shefali C.
-#Last Update- Nov 4, 2023
+#Last Update- Nov 6, 2023
 
 library(tidyverse)
 library(janitor)
@@ -93,16 +93,26 @@ data$senior <- ifelse(str_detect(data$job_title,
 #4. Salary 
 unique(data$salary_estimate)
 
-#remove the 'Glassdoor est.' part
-data$salary_estimate <- gsub(pattern = " \\(.*", replacement = "",
-                             x = data$salary_estimate)
-
 #create new salary column and modify it
 data$salary_in_1000_dollar <- data$salary_estimate
+
+
+#remove the 'Glassdoor est.' part
+data$salary_in_1000_dollar <- gsub(pattern = " \\(.*", replacement = "",
+                             x = data$salary_in_1000_dollar)
+
 
 #remove '$' and 'K'
 data$salary_in_1000_dollar <- gsub(pattern = regex('\\$|K'), '', data$salary_in_1000_dollar)
 
-#minimum salary range
-data$min_salary <- stringr::str_extract(data$salary_in_1000_dollar, 
-                                        pattern = regex('[0-9]+'))
+#split the salary column using '-' as point of separation
+data <- data %>% 
+          tidyr::separate_wider_delim(cols = salary_in_1000_dollar,
+                                      delim = "-",
+                                      names = c("min_salary", "max_salary"))
+
+#5. Remove numeric ratings from company names
+data$company_name <- stringr::str_replace(
+                          string = data$company_name,
+                          pattern = regex(" -?[0-9].[0-9]"),
+                          replacement = "")
