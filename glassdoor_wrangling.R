@@ -1,6 +1,6 @@
 #Data Cleaning- Glassdoor-Scraped Data Scientist Jobs
 #Author- Shefali C.
-#Last Update- Nov 6, 2023
+#Last Update- Nov 7, 2023
 
 library(tidyverse)
 library(janitor)
@@ -112,7 +112,17 @@ data <- data %>%
                                       names = c("min_salary", "max_salary"))
 
 #5. Remove numeric ratings from company names
-data$company_name <- stringr::str_replace(
+data$new_company_name <- stringr::str_replace(
                           string = data$company_name,
-                          pattern = regex(" -?[0-9].[0-9]"),
+                          pattern = regex("[\\s|\\n]?-?([0-9]\\.[0-9])[\\s|\\n]?"),
                           replacement = "")
+
+#6.
+View(data %>% select(location, headquarters) %>% distinct())
+
+#6. Filter out state code of location and headquarters both
+data$location_state <- str_extract(string = data$location,
+                                   pattern = regex("[A-Z]{2}$"))
+
+data$hq_state <- str_extract(string = data$headquarters,
+                             pattern = regex("[A-Z]{2}$"))
