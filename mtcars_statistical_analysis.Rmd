@@ -33,6 +33,86 @@ library(grid)
 ```{r read-data}
 #read data
 df1 <- mtcars
+#a quick look at the dataset
+glimpse(df1)
 ```
+## Data description  
+
+This dataset was extracted from 1974 Motor Trend US magazine and contains fuel consumption and 10 aspects of automobile design-performance for 32 automobiles (1973-74 models).  
+
+### Variables: 
+
+- `mpg`- miles/gallon  
+- `cyl`- number of cylinders  
+- `hp`- gross horsepower  
+- `wt`- weight (1000lbs)  
+- `vs`- Engine; 0 = V-shaped, 1 = straight  
+- `am`- Transmission; 0 = automatic, 1 = manual  
+- `gear`- number of forward gears  
+- `carb`- number of carburetors  
+
+## Data Distribution Viz 
+
+### 1. Histogram  
+
+Here, distribution of miles/gallon of cars is being visualized.  
+```{r mpg-range}
+print("Range of miles/gallon variable:")
+range(df1$mpg)
+```
+#### a) Simple histogram
+
+```{r hist1}
+(hist1 <- df1 %>% 
+          ggplot(aes(x=mpg))+
+          geom_histogram(breaks = seq(0,36,4), color = "midnightblue",
+                         fill = "lightblue")+
+          scale_y_continuous(expand = c(0,0),limits = c(0,14),
+                             breaks = seq(0,14,3), labels = seq(0,14,3))+
+          scale_x_continuous(breaks = seq(0,36,4),
+                             labels = seq(0,36,4))+
+          labs(title = "Distribution of miles/gallon",
+               caption = "Source: Motor Trends US magazine")+
+          theme_bw()+
+          theme(plot.caption = element_text(hjust = 0, color="black", 
+                                            size = 6, face = "bold.italic"),
+                plot.title = element_text(hjust = 0.5))
+)
+```
+
+#### b) Histogram with a mean line
+
+```{r hist2}
+hist1+
+  labs(subtitle = "Histogram with mean line")+
+  geom_vline(aes(xintercept = mean(mpg)), color = "red",
+             linetype = "dashed", linewidth = 1.1)+
+  theme(plot.subtitle = element_text(size = 6, face = "bold"),
+        plot.title = element_text(hjust = 0))
+```
+
+#### c) Histogram with a density plot
+
+```{r hist3}
+df1 %>% 
+  ggplot(aes(x=mpg))+
+  geom_histogram(aes(y=after_stat(density)), color = "midnightblue", fill = "steelblue", breaks = seq(0,36,4))+
+  geom_density(fill = "yellow", alpha = 0.6)+
+  scale_y_continuous(expand = c(0,0))+
+  scale_x_continuous(breaks = seq(0,36,4),
+                     labels = seq(0,36,4))+
+  labs(title = "Distribution of miles/gallon",
+       subtitle = "Histogram with density plot",
+               caption = "Source: Motor Trends US magazine")+
+          theme_bw()+
+          theme(plot.caption = element_text(hjust = 0, color="black", 
+                                            size = 6, face = "bold.italic"),
+                plot.subtitle = element_text(size = 7, face = "bold"))
+```
+
+
+
+
+
 
 
