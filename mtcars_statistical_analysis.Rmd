@@ -1,0 +1,38 @@
+---
+title: "Statistical Analysis of mtcars dataset"
+author: "Shefali C."
+date: "2024-02-05"
+output: 
+      prettydoc::html_pretty:
+        theme: cayman
+        highlight: vignette
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This notebook includes methods to visualize data distribution using ggplot2. I've used the built-in dataset **`mtcars`** for demonstration.  
+Following plots and their customizations are included in this notebook:  
+1. Histograms  
+2. Density Plots  
+3. Boxplots  
+
+Other statistical measurements like mean, median, mode, standard deviation, variance have also been plotted towards the end of this notebook.  
+
+So, all in all, I've taken the example of **`mtcars`** to show how a dataset is statistically analysed in initial phases of analysis.  
+
+```{r load-libraries, message=FALSE, warning=FALSE}
+#load libraries
+
+library(tidyverse)
+#textGrob() of grid package has been used.
+library(grid)
+``` 
+
+```{r read-data}
+#read data
+df1 <- mtcars
+```
+
+
