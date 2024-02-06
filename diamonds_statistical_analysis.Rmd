@@ -1,0 +1,175 @@
+---
+title: "Statistical Analysis of diamonds dataset"
+author: "Shefali C."
+date: "2024-02-05"
+output: 
+      prettydoc::html_pretty:
+        theme: cayman
+        highlight: vignette
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This notebook includes methods to visualize data distribution using ggplot2. I've used the built-in dataset **`diamonds`** for demonstration.  
+Following plots and their customization are included in this notebook:  
+1. Histograms  
+2. Density Plots  
+3. Boxplots  
+
+Other statistical measurements like mean, median, mode, standard deviation, variance have also been plotted towards the end of this notebook.  
+
+So, all in all, I've taken the example of **`diamonds`** to show how a dataset is statistically analysed in initial phases of analysis.  
+
+```{r load-libraries, message=FALSE, warning=FALSE}
+#load libraries
+
+library(tidyverse)
+#textGrob() of grid package has been used.
+library(grid)
+library(plyr)
+``` 
+
+
+
+```{r read-data}
+#read data
+df1 <- diamonds
+#a quick look at the dataset
+glimpse(df1)
+```
+## Data description  
+
+
+### Variables: 
+
+- **`carat`-** weight of diamond (0.2 - 5.01)  
+- **`price`-** price in USD (\$326-\$18,823)  
+- **`cut`-** quality of the diamond cut (Fair, Good, Very good, Premium, Ideal).  
+- **`color`-** dimaond color from D (best) to J (worst)  
+- **`table`-** width of top of the diamond relative to the widest point.  
+- **`x`-** length in mm (0 - 10.74)  
+- **`y`-** width in mm (0 - 58.9)  
+- **`z`-** depth in mm (0 - 31.8)  
+
+
+## Data Distribution Viz 
+
+### 1. Histograms
+
+#### a) Simple Histogram
+
+```{r}
+(p1 <- ggplot(data = df1, aes(x=carat))+
+        geom_histogram(breaks = seq(0,5.2,0.2), fill = "lightblue",
+                       color = "black", alpha = 0.5)+
+        scale_x_continuous(breaks = seq(0,5.2,0.2),
+                           labels = seq(0, 5.2, 0.2))+
+        scale_y_continuous(expand = c(0,0), limits = c(0,15000),
+                           breaks = seq(0,15000,3000),
+                           labels = paste0(seq(0,15000,3000)/1000))+
+        labs(title = "Distribution of diamond carat",
+             caption = "Source: RStudio built-in dataset")+
+        theme_bw()+
+        theme(axis.text = element_text(size = 5, face = "bold", color = "black"),
+              plot.caption = element_text(face = "bold.italic", size = 6,hjust = 0))
+)
+```
+
+#### b) Histogram with a mean line
+
+```{r}
+carat_mean <- mean(df1$carat)
+carat_median <- median(df1$carat)
+```
+
+```{r}
+#text grobs to place on plot below
+mean_label <- grid::textGrob(label = "mean",
+                            rot = 90, y = 0.80,
+                            gp = gpar(fontsize = 7,
+                                      fontface = "bold",
+                                      col = "red"))
+#median
+median_label <- grid::textGrob(label = "median",
+                               rot = 90,y=0.80,
+                               gp = gpar(fontface = "bold",
+                                         fontsize = 7,
+                                         col = "darkblue"))
+```
+
+
+
+```{r}
+p1 +
+  geom_vline(aes(xintercept = mean(carat)), color = "red",
+             linetype = "dashed", linewidth = 0.7)+
+  annotation_custom(mean_label, xmin = carat_mean+0.05, xmax = carat_mean+0.05)+
+  # annotate(geom = "text", label = "mean", color = "red",
+  #          size = 3, fontface = "bold", x = carat_mean+0.03,
+  #          y = 12, angle = 90)+
+  geom_vline(aes(xintercept = median(carat)), color = "darkblue",
+             linetype = "dashed", linewidth = 0.7)+
+  annotation_custom(median_label, xmin = carat_median-0.1,
+                    xmax = carat_median-0.1)+
+  coord_cartesian(clip = "off")
+```
+
+
+
+
+#### c) Histogram with a density plot
+
+```{r}
+df1 %>% 
+  ggplot(aes(x=carat))+
+  geom_histogram(aes(y = after_stat(density)),
+        breaks = seq(0,5.2,0.2), fill = "white",
+        color = "black")+
+  geom_density(color = "black", fill = "blue",
+               alpha = 0.3, linewidth = 0.4)+
+        scale_x_continuous(breaks = seq(0,5.2,0.2),
+                           labels = seq(0, 5.2, 0.2))+
+        scale_y_continuous(expand = c(0,0))+
+        labs(title = "Distribution of diamond carat",
+             caption = "Source: RStudio built-in dataset")+
+        theme_bw()+
+        theme(axis.text = element_text(size = 5, face = "bold", color = "black"),
+              plot.caption = element_text(face = "bold.italic", size = 6,hjust = 0))
+```
+
+
+#### d) Histogram- coloring based on groups (Interleaved hist)
+
+There are 5 unique values in **"cut"** feature namely fair, good, very good, premium & ideal.  
+Each of the groups will get a distinct color.  
+
+
+
+
+#### e) Interleaved histogram with mean line for each group
+
+
+
+#### f) Histogram in different facets
+
+### 2. Density Plots
+
+### 3. Frequency Polygon Charts (geom_freqpoly())
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
