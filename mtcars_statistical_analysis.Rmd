@@ -1,5 +1,5 @@
 ---
-title: "Statistical Analysis of mtcars dataset"
+title: "Statistical Analysis of diamonds dataset"
 author: "Shefali C."
 date: "2024-02-05"
 output: 
@@ -12,15 +12,15 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-This notebook includes methods to visualize data distribution using ggplot2. I've used the built-in dataset **`mtcars`** for demonstration.  
-Following plots and their customizations are included in this notebook:  
+This notebook includes methods to visualize data distribution using ggplot2. I've used the built-in dataset **`diamonds`** for demonstration.  
+Following plots and their customization are included in this notebook:  
 1. Histograms  
 2. Density Plots  
 3. Boxplots  
 
 Other statistical measurements like mean, median, mode, standard deviation, variance have also been plotted towards the end of this notebook.  
 
-So, all in all, I've taken the example of **`mtcars`** to show how a dataset is statistically analysed in initial phases of analysis.  
+So, all in all, I've taken the example of **`diamonds`** to show how a dataset is statistically analysed in initial phases of analysis.  
 
 ```{r load-libraries, message=FALSE, warning=FALSE}
 #load libraries
@@ -28,87 +28,145 @@ So, all in all, I've taken the example of **`mtcars`** to show how a dataset is 
 library(tidyverse)
 #textGrob() of grid package has been used.
 library(grid)
+library(plyr)
 ``` 
+
+
 
 ```{r read-data}
 #read data
-df1 <- mtcars
+df1 <- diamonds
 #a quick look at the dataset
 glimpse(df1)
 ```
 ## Data description  
 
-This dataset was extracted from 1974 Motor Trend US magazine and contains fuel consumption and 10 aspects of automobile design-performance for 32 automobiles (1973-74 models).  
 
 ### Variables: 
 
-- `mpg`- miles/gallon  
-- `cyl`- number of cylinders  
-- `hp`- gross horsepower  
-- `wt`- weight (1000lbs)  
-- `vs`- Engine; 0 = V-shaped, 1 = straight  
-- `am`- Transmission; 0 = automatic, 1 = manual  
-- `gear`- number of forward gears  
-- `carb`- number of carburetors  
+- **`carat`-** weight of diamond (0.2 - 5.01)  
+- **`price`-** price in USD (\$326-\$18,823)  
+- **`cut`-** quality of the diamond cut (Fair, Good, Very good, Premium, Ideal).  
+- **`color`-** dimaond color from D (best) to J (worst)  
+- **`table`-** width of top of the diamond relative to the widest point.  
+- **`x`-** length in mm (0 - 10.74)  
+- **`y`-** width in mm (0 - 58.9)  
+- **`z`-** depth in mm (0 - 31.8)  
+
 
 ## Data Distribution Viz 
 
-### 1. Histogram  
+### 1. Histograms
 
-Here, distribution of miles/gallon of cars is being visualized.  
-```{r mpg-range}
-print("Range of miles/gallon variable:")
-range(df1$mpg)
-```
-#### a) Simple histogram
+#### a) Simple Histogram
 
-```{r hist1}
-(hist1 <- df1 %>% 
-          ggplot(aes(x=mpg))+
-          geom_histogram(breaks = seq(0,36,4), color = "midnightblue",
-                         fill = "lightblue")+
-          scale_y_continuous(expand = c(0,0),limits = c(0,14),
-                             breaks = seq(0,14,3), labels = seq(0,14,3))+
-          scale_x_continuous(breaks = seq(0,36,4),
-                             labels = seq(0,36,4))+
-          labs(title = "Distribution of miles/gallon",
-               caption = "Source: Motor Trends US magazine")+
-          theme_bw()+
-          theme(plot.caption = element_text(hjust = 0, color="black", 
-                                            size = 6, face = "bold.italic"),
-                plot.title = element_text(hjust = 0.5))
+```{r}
+(p1 <- ggplot(data = df1, aes(x=carat))+
+        geom_histogram(breaks = seq(0,5.2,0.2), fill = "lightblue",
+                       color = "black", alpha = 0.5)+
+        scale_x_continuous(breaks = seq(0,5.2,0.2),
+                           labels = seq(0, 5.2, 0.2))+
+        scale_y_continuous(expand = c(0,0), limits = c(0,15000),
+                           breaks = seq(0,15000,3000),
+                           labels = paste0(seq(0,15000,3000)/1000))+
+        labs(title = "Distribution of diamond carat",
+             caption = "Source: RStudio built-in dataset")+
+        theme_bw()+
+        theme(axis.text = element_text(size = 5, face = "bold", color = "black"),
+              plot.caption = element_text(face = "bold.italic", size = 6,hjust = 0))
 )
 ```
 
 #### b) Histogram with a mean line
 
-```{r hist2}
-hist1+
-  labs(subtitle = "Histogram with mean line")+
-  geom_vline(aes(xintercept = mean(mpg)), color = "red",
-             linetype = "dashed", linewidth = 1.1)+
-  theme(plot.subtitle = element_text(size = 6, face = "bold"),
-        plot.title = element_text(hjust = 0))
+```{r}
+carat_mean <- mean(df1$carat)
+carat_median <- median(df1$carat)
 ```
+
+```{r}
+#text grobs to place on plot below
+mean_label <- grid::textGrob(label = "mean",
+                            rot = 90, y = 0.80,
+                            gp = gpar(fontsize = 7,
+                                      fontface = "bold",
+                                      col = "red"))
+#median
+median_label <- grid::textGrob(label = "median",
+                               rot = 90,y=0.80,
+                               gp = gpar(fontface = "bold",
+                                         fontsize = 7,
+                                         col = "darkblue"))
+```
+
+
+
+```{r}
+p1 +
+  geom_vline(aes(xintercept = mean(carat)), color = "red",
+             linetype = "dashed", linewidth = 0.7)+
+  annotation_custom(mean_label, xmin = carat_mean+0.05, xmax = carat_mean+0.05)+
+  # annotate(geom = "text", label = "mean", color = "red",
+  #          size = 3, fontface = "bold", x = carat_mean+0.03,
+  #          y = 12, angle = 90)+
+  geom_vline(aes(xintercept = median(carat)), color = "darkblue",
+             linetype = "dashed", linewidth = 0.7)+
+  annotation_custom(median_label, xmin = carat_median-0.1,
+                    xmax = carat_median-0.1)+
+  coord_cartesian(clip = "off")
+```
+
+
+
 
 #### c) Histogram with a density plot
 
-```{r hist3}
+```{r}
 df1 %>% 
-  ggplot(aes(x=mpg))+
-  geom_histogram(aes(y=after_stat(density)), color = "midnightblue", fill = "steelblue", breaks = seq(0,36,4))+
-  geom_density(fill = "yellow", alpha = 0.6)+
-  scale_y_continuous(expand = c(0,0))+
-  scale_x_continuous(breaks = seq(0,36,4),
-                     labels = seq(0,36,4))+
-  labs(title = "Distribution of miles/gallon",
-       subtitle = "Histogram with density plot",
-               caption = "Source: Motor Trends US magazine")+
-          theme_bw()+
-          theme(plot.caption = element_text(hjust = 0, color="black", 
-                                            size = 6, face = "bold.italic"),
-                plot.subtitle = element_text(size = 7, face = "bold"))
+  ggplot(aes(x=carat))+
+  geom_histogram(aes(y = after_stat(density)),
+        breaks = seq(0,5.2,0.2), fill = "white",
+        color = "black")+
+  geom_density(color = "black", fill = "blue",
+               alpha = 0.3, linewidth = 0.4)+
+        scale_x_continuous(breaks = seq(0,5.2,0.2),
+                           labels = seq(0, 5.2, 0.2))+
+        scale_y_continuous(expand = c(0,0))+
+        labs(title = "Distribution of diamond carat",
+             caption = "Source: RStudio built-in dataset")+
+        theme_bw()+
+        theme(axis.text = element_text(size = 5, face = "bold", color = "black"),
+              plot.caption = element_text(face = "bold.italic", size = 6,hjust = 0))
 ```
+
+
+#### d) Histogram- coloring based on groups (Interleaved hist)
+
+There are 5 unique values in **"cut"** feature namely fair, good, very good, premium & ideal.  
+Each of the groups will get a distinct color.  
+
+
+
+
+#### e) Interleaved histogram with mean line for each group
+
+
+
+#### f) Histogram in different facets
+
+
+
+### 2. Density Plots
+
+
+
+
+
+
+
+
+
+
 
 
 
