@@ -22,6 +22,8 @@ Other statistical measurements like mean, median, mode, standard deviation, vari
 
 So, all in all, I've taken the example of **`diamonds`** to show how a dataset is statistically analysed in initial phases of analysis.  
 
+## Notebook Contents in a nutshell:
+
 ```{r load-libraries, message=FALSE, warning=FALSE}
 #load libraries
 
@@ -29,6 +31,9 @@ library(tidyverse)
 #textGrob() of grid package has been used.
 library(grid)
 library(plyr)
+library(hrbrthemes)
+library(knitr)
+library(kableExtra)
 ``` 
 
 
@@ -39,6 +44,16 @@ df1 <- diamonds
 #a quick look at the dataset
 glimpse(df1)
 ```
+
+# Table:
+
+```{r table-view, results='asis'}
+
+kable(slice_sample(df1,n = 5), caption = "Quick glimpse of diamonds df",
+      booktabs = T) %>% 
+  kableExtra::kable_styling(font_size = 10)
+```
+
 ## Data description  
 
 
@@ -145,6 +160,20 @@ df1 %>%
 There are 5 unique values in **"cut"** feature namely fair, good, very good, premium & ideal.  
 Each of the groups will get a distinct color.  
 
+```{r}
+df1 %>% 
+  ggplot(aes(x=carat))+
+  geom_histogram(aes(fill = cut),
+        breaks = seq(0,5.2,0.2))+
+        scale_x_continuous(breaks = seq(0,5.2,0.2),
+                           labels = seq(0, 5.2, 0.2))+
+        scale_y_continuous(expand = c(0,0))+
+        labs(title = "Distribution of diamond carat",
+             caption = "Source: RStudio built-in dataset")+
+  hrbrthemes::theme_ipsum()
+```
+
+
 
 
 
@@ -156,7 +185,15 @@ Each of the groups will get a distinct color.
 
 ### 2. Density Plots
 
-### 3. Frequency Polygon Charts (geom_freqpoly())
+### 3. Frequency Polygon Charts (geom_freqpoly()) 
+
+### 4. Box Plots
+
+### 5. Rug Plot
+
+### 6. Violin Plot (Box Plot + KDE plot)
+
+### 7. How to place groups in desired sequence in a stacked bar chart?
 
 
 
