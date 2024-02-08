@@ -179,14 +179,23 @@ df1 %>%
 
 
 
-
-#### e) Interleaved histogram with mean line for each group
-
-
-
-#### f) Histogram in different facets
-
 ### 2. Density Plots
+
+```{r}
+df1 %>% 
+  ggplot(aes(x=carat, fill = cut))+
+  geom_density(outline.type = "full", linewidth=0.4)+
+  scale_y_continuous(expand = c(0,0))+
+  labs(title = "Carat distribution of diamonds",
+       caption = "Source: R built-in dataset")+
+  theme_bw()+
+  theme(plot.caption = element_text(hjust=0, size = 7, color = "black",
+                                    face = "italic"),
+        axis.title = element_text(size = 7, color = "black"),
+        axis.text = element_text(size = 6, color = "black"),
+        legend.text = element_text(size = 6))
+```
+
 
 ### 3. Frequency Polygon Charts (geom_freqpoly()) 
 
