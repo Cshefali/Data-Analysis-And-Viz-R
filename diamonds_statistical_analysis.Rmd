@@ -34,7 +34,14 @@ library(plyr)
 library(hrbrthemes)
 library(knitr)
 library(kableExtra)
+library(showtext)
 ``` 
+
+```{r}
+font_add_google(family = "Roboto Mono", "Roboto Mono")
+showtext::showtext_auto()
+```
+
 
 
 
@@ -194,12 +201,30 @@ df1 %>%
         axis.title = element_text(size = 7, color = "black"),
         axis.text = element_text(size = 6, color = "black"),
         legend.text = element_text(size = 6))
+
 ```
 
 
 ### 3. Frequency Polygon Charts (geom_freqpoly()) 
+```{r}
+df1 %>% 
+  ggplot(aes(x=carat,fill = cut))+
+  geom_density(position = "stack", linewidth=0.3)+
+  theme_bw()+
+  scale_y_continuous(expand = c(0,0))
+```
+
 
 ### 4. Box Plots
+
+```{r}
+df1 %>% 
+  ggplot(aes(x=cut))+
+  geom_boxplot(aes(fill = cut))+
+  facet_wrap(~cut, scales="free")+
+  theme_bw()
+```
+
 
 ### 5. Rug Plot
 
@@ -208,6 +233,9 @@ df1 %>%
 ### 7. How to place groups in desired sequence in a stacked bar chart?
 
 
+```{r}
+sd(diamonds$carat)
+```
 
 
 
