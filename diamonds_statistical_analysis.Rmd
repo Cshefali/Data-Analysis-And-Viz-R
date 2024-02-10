@@ -38,6 +38,11 @@ library(showtext)
 ``` 
 
 ```{r}
+library(ggcorrplot)
+```
+
+
+```{r}
 font_add_google(family = "Roboto Mono", "Roboto Mono")
 showtext::showtext_auto()
 ```
@@ -234,8 +239,44 @@ df1 %>%
 
 
 ```{r}
+#standard deviation of carat
 sd(diamonds$carat)
 ```
+
+```{r}
+glimpse(diamonds)
+```
+## Reference for Correlation plot:
+
+[ggcorrplot](https://rpkgs.datanovia.com/ggcorrplot/)
+
+```{r}
+#variance
+cor(diamonds$z, diamonds$price)
+```
+
+#### Correlation plot
+
+```{r}
+#subset of diamonds dataset
+diamonds_subset <- diamonds %>% select(carat, depth, table, x, y, z, price)
+#find correlation between all numeric variables
+corr <- round(cor(diamonds_subset),2)
+#a matrix of correlation p values
+corr_p <- cor_pmat(diamonds_subset)
+```
+
+```{r}
+#corr plot
+ggcorrplot(corr,
+           ggtheme = ggplot2::theme_minimal,
+           colors = c("steelblue","white","#ffa600"),
+           lab = T,
+           insig = "blank")
+```
+
+
+
 
 
 
