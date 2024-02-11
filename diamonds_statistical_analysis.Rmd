@@ -275,6 +275,26 @@ ggcorrplot(corr,
            insig = "blank")
 ```
 
+### Boxplot
+
+```{r}
+df1 %>% 
+  ggplot(aes(x=carat))+
+  geom_boxplot()+
+  labs(title = "IQR for carat of diamonds")+
+  theme_bw()
+```
+
+```{r}
+df1 %>% 
+  ggplot(aes(x=price))+
+  geom_boxplot()+
+  labs(title = "IQR for price of diamonds")+
+  theme_bw()
+```
+
+
+
 
 
 
