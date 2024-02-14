@@ -280,7 +280,7 @@ ggcorrplot(corr,
 ```{r}
 df1 %>% 
   ggplot(aes(x=carat))+
-  geom_boxplot()+
+  geom_boxplot(fill = "lightblue")+
   labs(title = "IQR for carat of diamonds")+
   theme_bw()
 ```
@@ -288,10 +288,11 @@ df1 %>%
 ```{r}
 df1 %>% 
   ggplot(aes(x=price))+
-  geom_boxplot()+
+  geom_boxplot(fill = "pink")+
   labs(title = "IQR for price of diamonds")+
   theme_bw()
 ```
+
 
 
 
