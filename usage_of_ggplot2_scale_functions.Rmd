@@ -1,0 +1,84 @@
+---
+title: 'ggplot2: Usage of scale_(x|y)_* functions'
+author: "Shefali C."
+date: "2024-02-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This notebook explains the **`expand`** argument of **`scale_(x|y)_continuous()`** and **`scale_(x|y)_discrete()`** functions.  
+Both these functions are used to add/remove space between our plot and X-Y axis.  
+
+```{r load-library, echo=TRUE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(showtext)
+library(emo)
+```
+
+I like this font ***'Roboto Mono'*** from Google fonts, hence adding it to my graphs `r emo::ji("smile")`.
+
+```{r add-font, warning=FALSE}
+font_add_google('Roboto Mono', 'Roboto Mono')
+#turn on automatic usage of showtext pacakge & 
+#use the downloaded font for all plots, until changed.
+showtext::showtext_auto()
+```
+
+
+Here's a simple bar chart without using **`scale_y_continuous()`**.
+
+```{r plot1}
+(base_plot <- diamonds %>% 
+              dplyr::group_by(cut) %>% 
+              dplyr::summarise(total_count = n()) %>% 
+              ggplot(aes(x=cut, y = total_count))+
+              geom_bar(stat = "identity", color = "black", fill = "#ffa600")+
+              labs(title = "Total number of diamonds of each type of cut",
+                   y = "total count in dataset", x="")+
+              theme_bw()+
+              theme(axis.text = element_text(face = "bold", color = "black"),
+                    plot.title = element_text(face = "bold")))
+```
+
+In order to remove the space between the bars and X-axis, we can use **`scale_y_continuous()`** with its **"expand"** argument.  
+
+```{r plot2}
+#adding scale_y_cont.
+base_plot+
+  scale_y_continuous(expand = c(0,0))
+```
+### Explanation for **"expand=c(0,0)"**
+
+#### Logic behind the expansion arguments:
+
+- **Usage:** used to increase/decrease space between plot and Axes.  
+- Argument 1 and 2, both increase or decrease space from BOTH ends of the axes, i.e.  
+    - if **`scale_y_(continuous|discrete)`** is used, space will be added/removed from both below the bars and above them.  
+    - if **`scale_x_(continuous|discrete)`** is used, space will be added/removed from both right and left end of the X-axis.  
+    
+- **Argument 1:** this is the multiplication expansion factor. It works best when the **limits** argument is also specified in scale_*_() function.
+Uses the following formula:  
+1. lower_Y_limit + (range of Y-axis)* (argument 1)
+2. upper_Y_limit + (range of Y-axis)* (argument 1)  
+
+- **Argument 2:** this is the addition factor. It simply adds that many units to the results of 1. and 2. above. That is:  
+1. lower_Y_limit + (range of Y-axis)* (argument 1) + (argument 2)
+2. upper_Y_limit + (range of Y-axis)* (argument 1) + (argument 2) 
+
+#### Explanation of logic using chart above:
+
+- Above, **"limits"** argument not present in `scale_y_continuous(expand = c(0,0))`. So, limits are automatically set by ggplot2, here it is (0,22000). [Since max count is of ideal diamonds with 21,551 data points.] 
+
+- Using equation above: 
+    - $lower_Y_limit \+ (range of Y-axis)\* (argument 1)$  
+      $0 + (22000-0)*0 = 0$  
+    - $upper_Y_limit \+ (range of Y-axis)\*(argument 1)$
+        - $22000 + 0*0 = 0$
+
+
+
+
+
