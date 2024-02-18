@@ -16,6 +16,7 @@ Both these functions are used to add/remove space between our plot and X-Y axis.
 library(tidyverse)
 library(showtext)
 library(emo)
+library(patchwork)
 ```
 
 I like this font ***'Roboto Mono'*** from Google fonts, hence adding it to my graphs `r emo::ji("smile")`.
@@ -43,41 +44,154 @@ Here's a simple bar chart without using **`scale_y_continuous()`**.
                     plot.title = element_text(face = "bold")))
 ```
 
-In order to remove the space between the bars and X-axis, we can use **`scale_y_continuous()`** with its **"expand"** argument.  
+In order to remove the space between the bars and X-axis, we can use **`scale_y_continuous()`** with its **"expand"** argument. 
+
+**Expand = c(a,b)**  
+
+1. Contains 2 arguments. 'a' and 'b' are just placeholders for easier  explanation.  
+2. **argument 1 'a':**  
+    - multiplicative factor.  
+    - Works together with the 'limits' argument.  
+    - increases or decreases space from BOTH ends of the axis. For e.g. in **`scale_y_continuous()`**, it adds/removes space from both lower limit, (below the bars) and upper Y limit.  
+    - Formula:  
+        1. lower_Y_limit + (range of Y-axis)* (argument 1)  
+        2. upper_Y_limit + (range of Y-axis)* (argument 1) 
+        
+    - Example:  
+        - **`scale_y_continuous(limits = (0,6), expand = c(2,0))`**  
+            - new_lower_y_limit = 0 - (6-0)*2 = -12.  
+            - new_upper_y_limit = 6 + (6-0)*2 = 18. 
+            So, instead of limits being (0,6), now limits will be (-12,18) on Y axis and space will be added at both ends.  
+            
+3. **argument 2 'b':**  
+    - additive factor.  
+    - Only adds this specified unit to the given multiplicative factor.  
+    - Formula:
+        - new_lower_y_limit = lower_limit - (range of Y)*a - b  
+        - new_upper_y_limit = upper_limit + (range of Y)*a +b  
+        
+## Using different values for `expand`:
+        
+### expand = c(0,0)  
 
 ```{r plot2}
 #adding scale_y_cont.
 base_plot+
   scale_y_continuous(expand = c(0,0))
 ```
-### Explanation for **"expand=c(0,0)"**
-
-#### Logic behind the expansion arguments:
-
-- **Usage:** used to increase/decrease space between plot and Axes.  
-- Argument 1 and 2, both increase or decrease space from BOTH ends of the axes, i.e.  
-    - if **`scale_y_(continuous|discrete)`** is used, space will be added/removed from both below the bars and above them.  
-    - if **`scale_x_(continuous|discrete)`** is used, space will be added/removed from both right and left end of the X-axis.  
-    
-- **Argument 1:** this is the multiplication expansion factor. It works best when the **limits** argument is also specified in scale_*_() function.
-Uses the following formula:  
-1. lower_Y_limit + (range of Y-axis)* (argument 1)
-2. upper_Y_limit + (range of Y-axis)* (argument 1)  
-
-- **Argument 2:** this is the addition factor. It simply adds that many units to the results of 1. and 2. above. That is:  
-1. lower_Y_limit + (range of Y-axis)* (argument 1) + (argument 2)
-2. upper_Y_limit + (range of Y-axis)* (argument 1) + (argument 2) 
 
 #### Explanation of logic using chart above:
 
 - Above, **"limits"** argument not present in `scale_y_continuous(expand = c(0,0))`. So, limits are automatically set by ggplot2, here it is (0,22000). [Since max count is of ideal diamonds with 21,551 data points.] 
 
-- Using equation above: 
-    - $lower_Y_limit \+ (range of Y-axis)\* (argument 1)$  
-      $0 + (22000-0)*0 = 0$  
-    - $upper_Y_limit \+ (range of Y-axis)\*(argument 1)$
-        - $22000 + 0*0 = 0$
+- The values are:  
+  - lower_y_limit = 0,  
+  - range of Y axis = (22000 - 0) = 22000,  
+  - multiplication factor = 0,  
+  Using the equation above:  
+  - $units\_of\_space\_below = 0 - 0*0 = 0$, ***hence no space below bars***.  
+  - $units\_of_\_space\_above = 22000 + 22000*0 = 0$, ***hence no space above and bar sticks to upper panel line***.  
 
+### Modify the 2nd argument (additive factor)  
+
+```{r plot3}
+base_plot + 
+  scale_y_continuous(expand = c(0, 150))
+```
+
+Changing additive factor to 150 adds a little space below and above the bars. 
+**NOTE: ** changing this value to small values like 2 or 10, doesn't really reflect any changes in plot.
+
+### Modify the first argument (multiplicative factor)
+
+```{r plot4}
+base_plot +
+  scale_y_continuous(expand = c(2,0))
+```
+
+#### Explanation:  
+
+- previous Y axis limits = (0,22000)  
+- changes:  
+    - $new\_lower\_limit = 0 - 22000*2 - 0 = -44000$, ***hence you see the negative Y axis extends a little below -40000***.  
+    - $new\_upper\_limit = 22000 + 22000*2 + 0 = 66,000$, ***hence +ve Y axis extends beyond 60,000***.  
+    
+### Change both factors:  
+
+```{r plot5}
+base_plot +
+  scale_y_continuous(expand = c(1.5, 150))
+```
+
+#### EXplanation:  
+
+- Y axis extends from (-33150, 55,150)  
+    - lower y : $0 - 22000*1.5 + 150 = -33,150$,  
+    - upper y : $22000 + 22000*1.5 + 150 = 55,150$  
+    
+### Limits with expand: 
+
+The calculations are same as above, the only difference is here, I've explicitly specified limits.  
+**NOTE: **  
+- Without expand, there's little space below bars and the above 25000 label on Y axis.  
+- With expand, the space below gets omitted & space above 25,000 on Y axis is also removed. 
+
+
+```{r plot6}
+p1 <- base_plot + 
+        scale_y_continuous(limits = c(0,25000))+
+        labs(subtitle = "scale_y_cont(limits = c(0,25000))")
+p2 <- base_plot +
+        scale_y_continuous(limits = c(0,25000), expand = c(0,0))+
+        labs(subtitle = "scale_y_cont(limits = c(0,25000), expand = c(0,0))")
+
+p1 + p2
+```
+
+**Drawback of this method**- space gets added or removed from both ends of axis.  
+**What if we only want to add/remove padding from one end?? ie. remove space below the bars but the top Y axis should not be affected...**  
+
+**Alternative: ** **`expansion()`** function can be used to achieve this.  
+
+### expand = expansion(mult = c(a,b), add = (m,n))
+
+- mult: multiplicative factor. 'a' is for lower Y axis or left X axis, 'b' is for higher Y axis or right-end of X axis.  
+- add: additive factor; m is for lower end, n is for higher end.  
+
+Below, keeping **`expand = expansion(mult = c(0,0.05))`** implies no space below '0' mark on Y axis and add 5% space above '22,000' mark. 
+
+So, upper y axis becomes:  
+$22000 + 22000*0.05 = 22000 + 1100 = 23,100$
+
+```{r}
+base_plot+
+  scale_y_continuous(expand = expansion(mult = c(0,0.05)))
+```
+
+## Using expansion() on the discrete X axis: 
+
+Below, the 'add' argument has been used for expansion in `scale_x_discrete()` function. It adds that unit of space on either ends of X-axis.
+
+```{r}
+p3 <- base_plot+
+        scale_y_continuous(expand = expansion(mult = c(0,0.05)),
+                           limits = c(0,23000),
+                           breaks = seq(0,23000,4000),
+                           labels = paste0(seq(0,23000,4000)/1000,"K"))+
+        scale_x_discrete(expand = expansion(add = c(1,1)))+
+        labs(subtitle = "used: scale_x_discrete(expand = expansion(add = c(1,1)))")
+
+p4 <- base_plot+
+        scale_y_continuous(expand = expansion(mult = c(0,0.05)),
+                           limits = c(0,23000),
+                           breaks = seq(0,23000,4000),
+                           labels = paste0(seq(0,23000,4000)/1000,"K"))+
+        scale_x_discrete(expand = expansion(add = c(1,2)))+
+        labs(subtitle = "used: scale_x_discrete(expand = expansion(add = c(1,2)))")+
+  theme(axis.title.y = element_blank())
+
+p3 + p4
+```
 
 
 
