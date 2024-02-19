@@ -23,6 +23,9 @@ glimpse(df1)
 #dataframe full view
 View(df1)
 
+#summary stats
+summary(df1)
+
 #all column names
 all_features <- colnames(df1)
 
@@ -87,3 +90,66 @@ df1 %>%
        y = "carats")+
   theme_bw()
 
+#density plot-- overall
+df1 %>% 
+  ggplot(aes(x=carat))+
+  geom_density(aes(fill = cut))+
+  facet_wrap(~cut)+
+  theme_bw()
+
+grouping_c3 <- df1 %>% 
+  group_by(cut, color, clarity) %>% 
+  summarise(total_count = n())
+
+View(grouping_c3)
+
+#facet grid--distribution of cut, color, clarity
+grouping_c3 %>% 
+  ggplot(aes(x=clarity, y = total_count, fill = clarity))+
+  geom_bar(stat = "identity")+
+  scale_y_continuous(expand = expansion(mult = c(0,0.02)))+
+  facet_grid(cut~color, scales = "free_x")+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 90, size = 4, face = "bold"))
+
+#dendogram
+grouping_c3 %>% 
+  ggplot(aes(x="", y = total_count, fill = cut))+
+  geom_bar(stat = "identity", width = 1)+
+  coord_polar("y", start = 0)+
+  scale_y_continuous(expand = expansion(mult = c(0,0.02)))+
+  facet_grid(color~clarity)+
+  theme_void()
+
+
+View(grouping_c3 %>% filter(clarity == "IF") 
+     %>% group_by(cut, color) %>%
+       summarise(total = sum(total_count)))
+
+##heatmap
+grouping_c3 %>% 
+  ggplot(aes(x=cut, y=color, fill = total_count))+
+  geom_tile(color = "black")+
+  scale_fill_gradient(low = "#FFE900", high = "#E43D00")+
+  theme_minimal()
+
+
+#separate scatterplots for each cut type
+#trying to see if best color shows high price in each cut.
+df1 %>% 
+  ggplot(aes(x=carat, y=price, color = cut))+
+  geom_point()+
+  facet_wrap(~color, scales = "free_x")+
+  theme_minimal()
+
+
+df1 %>% 
+  ggplot(aes(x=clarity, y = carat, fill = clarity))+
+  geom_boxplot()
+
+df1 %>% 
+  group_by(clarity) %>% 
+  summarise(total_count = n()) %>% 
+  ggplot(aes(x=clarity, y = total_count))+
+  geom_bar(stat = "identity", fill = "pink", color = "black")+
+  theme_bw()
