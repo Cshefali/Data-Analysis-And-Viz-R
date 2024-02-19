@@ -1,8 +1,13 @@
 #Statistical Analysis of diamonds dataset
-#Last Update- February 18, 2024
+#Last Update- February 19, 2024
 #Author- Shefali C.
 
+##HELPFUL LINKS
+#usage of stat_summary- mean/sd lines-->https://www.datanovia.com/en/lessons/ggplot-dot-plot/
+
 library(tidyverse)
+#to use stat_summary functionalities
+library(Hmisc)
 
 #working directory
 working_dir <- getwd()
@@ -41,37 +46,44 @@ pal=c("#003f5c",
 #1. cut
 unique(df1$cut)
 
-#total number of data points for each type of cut
+#Bar Chart- total number of data points for each type of cut
 
 df1 %>% 
-  dplyr::group_by(cut) %>% 
-  dplyr::summarise(total_count = n()) %>% 
+  group_by(cut) %>% 
+  summarize(total_count = n()) %>% 
   ggplot(aes(x=cut, y = total_count))+
   geom_bar(stat = "identity",fill = "#d45087", color = "black")+
-  #remove space between X-axis and base of the bars
-  scale_y_continuous(expand = c(2,0))+
-  labs(title = "Expand = c(2,0)",
-       subtitle = "1st agrument is multiplicative vector\nadds double space both at top and bottom")+
+  geom_text(aes(label = total_count), fontface = "bold", vjust = -0.6,
+            size = 3)+
+  scale_y_continuous(expand = expansion(mult = c(0,.05)))+
+  labs(title = "Number of diamonds per cut-type",
+       subtitle = "Diamonds of ideal type have highest count",
+       x = "", y = "total count of diamonds")+
+  theme_bw()+
+  theme(axis.text = element_text(color = "black", size = 8),
+        axis.title = element_text(size = 9, color = "black"),
+        plot.subtitle = element_text(size = 8, hjust = 0.5),
+        plot.title = element_text(hjust = 0.5),
+        axis.ticks.x = element_blank())
+
+#min and max value of carat for each cut
+df1 %>% group_by(cut) %>% 
+  summarize(min_value = min(carat),
+         max_value = max(carat))
+
+#Boxplot- to understand spread of each group
+df1 %>% 
+  ggplot(aes(x=cut, y=carat, fill = cut))+
+  stat_boxplot(geom = "errorbar", width = 0.3)+
+  geom_boxplot(color = "black", outlier.color = "red",
+               outlier.size = 1)+
+  #add a mean/sd range line
+  # stat_summary(fun.data = "mean_sdl", fun.args = list(mult = 1),
+  #              geom = "crossbar", color = "orange", linewidth = 0.2)+
+  coord_flip()+
+  labs(title = "Carat distribution is heavily right-skewed",
+       subtitle = "The median carat value lies close to 1",
+       x = "type of cut",
+       y = "carats")+
   theme_bw()
 
-df1 %>% 
-  dplyr::group_by(cut) %>% 
-  dplyr::summarise(total_count = n()) %>% 
-  ggplot(aes(x=cut, y = total_count))+
-  geom_bar(stat = "identity",fill = "#d45087", color = "black")+
-  #remove space between X-axis and base of the bars
-  scale_y_continuous(expand = c(0,115))+ 
-                     #limits = c(0,25000))+
-  # labs(title = "Expand = c(2,0)",
-  #      subtitle = "1st agrument is multiplicative vector\nadds double space both at top and bottom")+
-  theme_bw()
-
-df1 %>% 
-  dplyr::group_by(cut) %>% 
-  dplyr::summarise(total_count = n()) %>% 
-  ggplot(aes(x=cut, y=total_count))+
-  geom_bar(stat = "identity", fill= "#d45087", color = "black")+
-  scale_y_continuous(expand = expansion(mult = c(0,0.05)))+
-  #adding space to the left and right of x-axis
-  scale_x_discrete(expand = expansion(mult = c(0.2,0.2)))+
-  theme_bw()
