@@ -14,7 +14,9 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,
-                      fig.align = 'center')
+                      fig.align = 'center',
+                      fig.width = 6,
+                      fig.height = 4)
 ```
 
 
@@ -23,6 +25,8 @@ library(tidyverse)
 #to visualize missing values
 library(visdat)
 library(patchwork)
+#to build treemap
+library(treemap)
 ```
 
 This notebook contains the most popular data distribution charts used to analyse a dataset in initial phase.  
@@ -87,7 +91,7 @@ it seems quite unlikely for a diamond to have absolutely no depth!
 
 8. Similarly, `x` and `y` too have minimum value of 0.000mm. Maybe it's the same rows where z = 0.000. This will be checked later.  
 
-## **Data Cleaning** 
+## **I. Data Cleaning** 
 
 ### **1. Missing Values- none**  
 
@@ -219,7 +223,10 @@ df1_unique %>%
 
 Removing rows with depth=0.000 also removes rows with length=0.000, width=0.000.  
 
-## **All Data-Distribution Graphs**
+## **II. All Data-Distribution Graphs**
+
+Following charts have been created to show the range of options available to visualize data.  
+The next section "Detailed Analysis" contains an in-depth analysis of the dataset. 
 
 ```{r set_common_theme}
 theme_set(
@@ -234,21 +241,188 @@ theme_set(
 ```
 
 
-### 1. Categorical Features- cut, color, clarity.  
+### **1. Categorical Features**
 
-#### a) Barcharts
+a) **Barcharts-** good to see total number of data points in each category.  
+b) **Heatmaps-** good to see total count of each sub-category for the main category. In the example below, we can visualize number of diamonds of each color for each type of cut.  
+
+c) **Treemaps-** can be used to visualize multiple categories within a category. In the e.g. below, the main category is cut, sub-category1 is color and sub-category2 is clarity of diamond. The area of tiles reflects the proportion of data points within each category.  
+
+
+#### **a) Barcharts**
 
 ```{r barchart}
 
 #total count of each diamond-type in dataset
-df1_unique %>% 
-  ggplot(aes(x=cut))+
-  geom_bar(color = "steelblue", fill = "lightblue", width = 0.5)+
-  geom_text(aes(label = ..count..), stat = "count", size = 2, 
-            fontface = "bold", vjust = -0.5)+
-  labs(title = "Ideal diamonds are highest in number",
-       x = "type of cut", y = "total count in the dataset")
+df1_unique %>%
+    ggplot(aes(x=cut))+
+    geom_bar(color = "steelblue", fill = "lightblue", width = 0.5)+
+    geom_text(aes(label = after_stat(count)), stat = "count", size = 2,
+              fontface = "bold", vjust = -0.5)+
+    labs(title = "Ideal diamonds are highest in number",
+         x = "type of cut", y = "total count in the dataset")
+
+#total count of diamonds of each color type
+# color_count <- df1_unique %>%
+#               ggplot(aes(x=color))+
+#               geom_bar(color = "steelblue", fill = "lightblue", width = 0.5)+
+#               geom_text(aes(label = after_stat(count)), stat = "count", size = 2,
+#                         fontface = "bold", vjust = -0.5)+
+#               labs(title = "Diamonds of color E,F,G form 56.8% of the dataset",
+#                    x = "color of diamond", y = "total count in the dataset")
+# 
+# #total count of diamonds of each clarity type
+# clarity_count <- df1_unique %>% 
+#               ggplot(aes(x=clarity))+
+#               geom_bar(color = "steelblue", fill = "lightblue", width = 0.5)+
+#               geom_text(aes(label = after_stat(count)), stat = "count", size = 2, 
+#                         fontface = "bold", vjust = -0.5)+
+#               labs(title = "Diamond clarity",
+#                    x = "diamond clarity", y = "total count in the dataset")
+
 ```
+
+#### **b) HeatMaps**
+
+Such maps can be used to view the 'group' with high count/value. For e.g.the map below shows the relationship between diamond cut and color.  
+The color intensity in the tiles reflect number of datapoints with the corresponding cut and color.  
+Darker tiles reflect high count.
+
+```{r group-cut-color, message=FALSE, warning=FALSE}
+#group data by cut and color
+cut_color_aggr <- df1_unique %>% 
+                    group_by(cut, color) %>% 
+                    summarise(total_count = n())
+```
+
+
+```{r heatmap}
+
+#heatmap using 2 ordinal variables- color, cut
+cut_color_aggr %>% 
+  ggplot(aes(x = cut, y = color, fill = total_count))+
+  geom_tile(color = "black")+
+  scale_fill_gradient(low = "#FFE900", high = "#E43D00")+
+  #remove space between X-Y axis and main plot
+  scale_y_discrete(expand = c(0,0))+
+  scale_x_discrete(expand = c(0,0))+
+  labs(title = "Frequency of diamonds grouped by cut & color ratings",
+       subtitle = "Dark color reflects higher count")
+
+```
+
+#### **c) Treemaps**
+
+```{r message=FALSE, warning=FALSE}
+
+#data prep- aggregate of the 3 Cs- cut, clarity and color
+aggr_3c <- df1_unique %>% 
+            group_by(cut, color, clarity) %>% 
+            summarise(total_count = n())
+```
+
+
+```{r treemap}
+
+#treemap of cut, color,  clarity
+treemap(aggr_3c,
+  index = c('cut', 'color', 'clarity'),
+  vSize = 'total_count',
+  type = "index",
+  title = "Number of diamonds by cut, color & clarity",
+  #increse label size if rectangles are bigger
+  inflate.labels = F,
+  bg.labels = "yellow",
+  #size of labels of each group, sub-group, sub-sub-group
+  fontsize.labels = c(10,8,6),
+  #border color for group, sub-group, sub-sub-group
+  border.col = c("black","black","white")
+)
+  
+```
+
+### **2. Numerical Features**
+
+#### **a) Histograms**
+
+```{r histograms}
+
+#simple histogram of carat distribution
+carat_hist <- df1_unique %>% 
+                ggplot(aes(x=carat))+
+                geom_histogram(binwidth = 0.3, fill = "pink",
+                               color = "#d45087",
+                               #boundary sets the X-labels as start-end values of an interval; and not in center of bar 
+                               boundary = 0,
+                               closed = "left")+
+                scale_y_continuous(expand = expansion(mult = c(0,0.02)))+
+                scale_x_continuous(breaks = seq(0,5.30,0.30),
+                                   labels = seq(0,5.3,0.3))+
+                labs(title = "Simple histogram",
+                     subtitle = "total diamond on Y-axis")+
+                theme(axis.text = element_text(size = 7))
+
+```
+
+
+```{r relative-freq-histogram}
+
+#Relative frequency histogram with % of data-points on Y-axis.
+carat_relative_hist <- df1_unique %>% 
+                          ggplot(aes(x=carat))+
+                          geom_histogram(aes(y = after_stat(count)/sum(count)),
+                                         binwidth = 0.3,
+                                         fill = "pink",
+                                         color = "#d45087",
+                                         boundary = 0,
+                                         closed = "left")+
+                          scale_x_continuous(breaks = seq(0,5.3,.3),
+                                             labels = seq(0,5.3,.3))+
+                          scale_y_continuous(expand = expansion(mult = c(0,0.02)))+
+                          labs(title = "Relative frequency histogram",
+                               subtitle = "relative % on Y axis",
+                               y = "freq percentage")+
+                          theme(axis.text = element_text(size = 7))
+```
+
+```{r hist_plots, fig.width=8}
+
+#histogram plots stitched
+(carat_hist + carat_relative_hist)+
+  plot_annotation(title = "Carat distribution: Two types of histograms",
+                  theme = theme(
+                    plot.title = element_text(size = 11, face = "bold", hjust = 0.5)))
+
+```
+
+#### **Annotate histogram with mean/median line** 
+
+```{r hist_with_annotation}
+
+df1_unique %>% 
+  ggplot(aes(x=carat))+
+  geom_histogram(binwidth = 0.3,
+                 fill = "pink",
+                 color = "#d45087",
+                 boundary = 0,
+                 closed = "left")+
+  #mean line
+  geom_vline(xintercept = mean(df1_unique$carat), color = "blue", linetype = "dashed")+
+  #label mean
+  annotate(geom = "text", label = "mean", color = "blue",
+           fontface = "bold", size = 1.5, angle = 90)
+  scale_x_continuous(breaks = seq(0,5.3,.3),
+                     labels = seq(0,5.3,.3))+
+  scale_y_continuous(expand = expansion(mult = c(0,0.02)))+
+  labs(title = "Carat Distribution")
+
+```
+
+
+
+
+
+
 
 
 
