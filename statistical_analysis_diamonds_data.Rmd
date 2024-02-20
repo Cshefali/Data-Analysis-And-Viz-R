@@ -5,6 +5,7 @@ date: "2024-02-20"
 output: 
     html_document:
       toc: true
+      toc_depth: 4
       toc_float: 
         collapsed: false
         smooth_scroll: false
@@ -27,6 +28,12 @@ library(visdat)
 library(patchwork)
 #to build treemap
 library(treemap)
+#to create text grobs
+library(grid)
+#to stop scientific notation on axes
+library(scales)
+#to build marginal distribution plots
+library(ggExtra)
 ```
 
 This notebook contains the most popular data distribution charts used to analyse a dataset in initial phase.  
@@ -97,7 +104,7 @@ it seems quite unlikely for a diamond to have absolutely no depth!
 
 I've added 2 methods to see missing values here, one is through code result and the other is grahical.  
 
-#### **1. Usual method of checking missing values** 
+#### **a) Usual method of checking missing values** 
 
 `sum(is.na(df))` counts total number of NA's in entire dataframe.
 
@@ -113,7 +120,7 @@ The method below computes missing values in each column.
 rbind(colSums(is.na(df1)))
 ```
 
-#### **2. Graph of Missing values**
+#### **b) Graph of Missing values**
 
 Below, `vis_miss()` of visdata package has been used to build a graph of missing values. Since, no missing values present, hence the entire graph is grey, if missing values were present, we would have seen some horizontal lines inside each column.
 
@@ -171,7 +178,7 @@ summary(df1_unique[,c('length', 'width', 'depth')])
 Depth percentage is calculated as : $2*z/(x+y)$.  
 If depth is 0, then depth% should also be 0.
 
-#### **Length column**
+#### **a) Length column**
 
 ```{r zero_length_rows}
 df1_unique %>% subset(length < 0.001, select = c(carat, length, width,depth, depth_perc))
@@ -179,7 +186,7 @@ df1_unique %>% subset(length < 0.001, select = c(carat, length, width,depth, dep
 
 All 7 rows have depth 0 but some value in $depth\%$ column, which is just not possible!  
 
-#### **Width column**
+#### **b) Width column**
 
 
 ```{r width_zero_rows}
@@ -192,7 +199,7 @@ df1_unique %>%
 
 All these rows with 0 length and width also have depth=0.  
 
-#### **Depth column**
+#### **c) Depth column**
 
 ```{r depth_zero}
 
@@ -211,7 +218,7 @@ df1_unique <- df1_unique %>%
                 filter(depth > 0.001)
 ```
 
-#### **Checking for values in length & width now:**
+#### **d) Checking for values in length & width again:**
 
 ```{r check_len_wid}
 
@@ -395,7 +402,34 @@ carat_relative_hist <- df1_unique %>%
 
 ```
 
-#### **Annotate histogram with mean/median line** 
+#### **b) Annotate histogram with mean/median line** 
+
+In order to add labels like "mean", "median" along the mean/median lines, first we need to create a text graphical object or 'Grob' and then add it to ggplot using **`annotation_custom()`**.  
+**`annotate()`** can also be used here but **`annotation_custom()`** provides more control over the text aesthetics.
+
+```{r}
+
+#text graphical object for mean/median labels
+mean_label <- grid::textGrob(label = "mean",
+                            rot = 90, y = 0.80,
+                            gp = gpar(fontsize = 7,
+                                      fontface = "bold",
+                                      col = "darkgreen")
+                            )
+median_label <- grid::textGrob(label = "median",
+                               rot = 90, y = 0.90,
+                               gp = gpar(fontsize = 7,
+                                         
+                                         #fontface = "bold",
+                                         col = "blue")
+                               )
+
+#mean and median of diamond carats
+carat_mean <- mean(df1_unique$carat)
+carat_median <- median(df1_unique$carat)
+
+```
+
 
 ```{r hist_with_annotation}
 
@@ -407,10 +441,15 @@ df1_unique %>%
                  boundary = 0,
                  closed = "left")+
   #mean line
-  geom_vline(xintercept = mean(df1_unique$carat), color = "blue", linetype = "dashed")+
+  geom_vline(aes(xintercept = mean(carat)), color = "darkgreen", linetype = "dashed")+
   #label mean
-  annotate(geom = "text", label = "mean", color = "blue",
-           fontface = "bold", size = 1.5, angle = 90)
+  annotation_custom(mean_label, xmin = carat_mean+0.05, xmax = carat_mean+0.05)+
+  #median line
+  geom_vline(xintercept = carat_median, color = "blue",
+             linetype = "dashed", linewidth = 0.5)+
+  #label- median
+  annotation_custom(median_label, xmin = carat_median-0.05,
+                    xmax = carat_median-0.05)+
   scale_x_continuous(breaks = seq(0,5.3,.3),
                      labels = seq(0,5.3,.3))+
   scale_y_continuous(expand = expansion(mult = c(0,0.02)))+
@@ -418,26 +457,120 @@ df1_unique %>%
 
 ```
 
+#### **c) Density Plots**
+
+```{r density-plot}
+df1_unique %>% 
+  ggplot(aes(x=carat, fill = cut))+
+  geom_density(outline.type = "full", alpha = 0.9, 
+               color = "black")+
+  scale_y_continuous(expand = expansion(mult = c(0,0.02)))+
+  labs(title = "Density Plot for carats")
+
+```
+
+#### **d) Frequency Polygon**
+
+```{r freq-polygon}
+
+#frequency polygon for diamond carats- y axis: total count
+count_f_poly <- df1_unique %>%
+                  ggplot(aes(x=price, color = cut, fill = cut))+
+                  geom_freqpoly(binwidth=500)+
+                  scale_y_continuous(expand = expansion(mult = c(0,0.02)))+
+                  scale_x_continuous(breaks = seq(0,20000,3000),
+                                     labels = seq(0,20000,3000))+
+                  labs(title = "Frequency Polygon for diamonds price",
+                       subtitle = "Y-axis: total count (default)",
+                       x = "price (in USD)")+
+                  theme(legend.position = "none")
+
+#Y-axis is density, not diamonds count
+density_f_poly <- df1_unique %>% 
+                  ggplot(aes(x=price, color = cut, fill = cut))+
+                  geom_freqpoly(aes(y=after_stat(density)),binwidth=500)+
+                  scale_y_continuous(expand = expansion(mult = c(0,0.02)), labels = scales::comma)+
+                  scale_x_continuous(breaks = seq(0,20000,3000),
+                                     labels = seq(0,20000,3000))+
+                  labs(title = "Frequency Polygon for diamonds price",
+                       subtitle = "Y-axis: density",
+                       x = "price (in USD)")
+
+```
+
+```{r freq-poly-plots, fig.width=8}
+
+count_f_poly + density_f_poly
+
+```
+
+#### **e) Boxplots**
+
+```{r boxplot1}
+df1_unique %>% 
+  ggplot(aes(x=cut, y = carat, fill = cut))+
+  #add bars at the end of whiskers
+  stat_boxplot(geom = "errorbar", width = 0.3)+
+  geom_boxplot(outlier.color = "red", outlier.size = 1)+
+  labs(title = "Boxplots for carat distribution")
+
+```
+
+#### **f) Violin Plots**
+
+This is a combination of boxplot and density plot.
+
+```{r violin-plot}
+
+#violing plot is a combination of box and density plot
+df1_unique %>% 
+  ggplot(aes(x=cut, y = carat, fill = cut))+
+  #trim=F prevents trimming of violin ends, 
+  #displays violin for full range of carat
+  geom_violin(trim = F, draw_quantiles = c(0.25,0.5,0.75))+
+  labs(title = "Violin plot for carat distribution")
+
+```
+
+#### **g) Rug Plot with Scatter Plot**
+
+Rug plots are not separate plots; they just highlight each data point by creating a line for each data point along the axes.  
 
 
+```{r rug_scatter}
+df1_unique %>% 
+  filter(cut == "Ideal", color == "D", 
+         clarity %in% c("IF","VVS1")) %>% 
+  ggplot(aes(x=carat, y=price,color = clarity))+
+  geom_point()+
+  geom_rug()+
+  scale_color_manual(values = c("IF" = "cyan4", "VVS1" = "darkmagenta"))+
+  labs(title = "Rug plot + Scatter plot",
+       subtitle = "Ideal diamonds with color rating 'D'")
+```
+
+#### **h) Highlight marginal distribution**
+
+Marginal plots helps us visualize the distribution intensity at different values of the variable. 
+**`ggExtra`** package has been used. 
 
 
+```{r hist_marginal}
 
+#scatterplot with histogram highlighting marginal distribution
+scatter_plot <- df1_unique %>% 
+                  filter(cut %in% c("Ideal", "Premium")) %>% 
+                  ggplot(aes(x=carat, y = price))+
+                  geom_jitter(color = "darkmagenta")+
+                  labs(title = "Marginal Distribution through density plot",
+                       subtitle = "75% of diamonds have price below $5369, hence the histogram is skewed")
 
+ggExtra::ggMarginal(scatter_plot, type = "histogram",
+                    fill = "darkmagenta", margins = 'y')
+```
 
+## **III. Detailed Analysis**
 
+### **1. Total number of diamonds in each category of cut, color and clarity**
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+<bar chart, patch all 3>
