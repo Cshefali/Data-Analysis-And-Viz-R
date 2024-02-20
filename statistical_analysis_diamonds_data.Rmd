@@ -1,0 +1,269 @@
+---
+title: "Diamonds data - Descriptive Statistics"
+author: "Shefali C."
+date: "2024-02-20"
+output: 
+    html_document:
+      toc: true
+      toc_float: 
+        collapsed: false
+        smooth_scroll: false
+      theme: cosmo
+      highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.align = 'center')
+```
+
+
+```{r load-libraires, message=FALSE, warning=FALSE}
+library(tidyverse)
+#to visualize missing values
+library(visdat)
+library(patchwork)
+```
+
+This notebook contains the most popular data distribution charts used to analyse a dataset in initial phase.  
+Then it analyses and draws conclusion on each feature.  
+
+## **Data description**
+
+- `x`- length of diamond in mm.  
+- `y`- width of diamond in mm.  
+- `z`- depth of diamond in mm.  
+- `depth`- This is actually the depth % of the diamond.  
+It is calculated as: $depth\% = z / mean(x + y)$. To simplify, $depth\% = 2z / (x+y)$.  
+- `carat`- weight of the diamonds. Determined by x, y and z values.  
+- `clarity`- contains 8 ordered levels from "SI2" (worst) to IF (best); (SI2 contains high impurities). It affects the brilliance of a diamond. It determines how light gets reflected internally in a diamond, resulting in the glimmer.  
+
+- `cut` 5 categories: Fair < Good < Very Good < Premium < Ideal.  
+- `color`- Colourless diamonds are considered better than the ones with yellowish-brownish tint.  
+      - This dataset contains diamonds of 7 colours- "D" to "J".  
+      - D, E, F are colorless & G-J have a very faint color.  
+      - The default ordering seemed a bit confusing to me as it goes like D < E < F < ... < J.  
+**Please note-** D is the best diamonds in terms of color and J is the worst, w.r.t to this dataset.  
+
+- `table`- the width of the top of diamond.  
+- `price`- price of diamonds in USD. 
+
+**The key benchmark descriptors of a diamond are the 4 Cs- carat, color, cut and clarity.**
+
+## **TLDR- Quick Summary Table**  
+
+[click on a line to move to that part of code]  
+
+<ADD A CUSTOM TABLE>  
+
+
+```{r data-summary}
+df1 <- diamonds
+#quick view
+glimpse(df1)
+```
+
+```{r}
+#check summary
+summary(df1)
+```
+
+
+## **Initial Observations from summary stats:**  
+
+1. `carat` ranges from 0.20 to 5.01. But 75% of diamonds lie below 1.04 carats. This implies presence of high outliers & data seems right-skewed.  
+
+2. `cut`- "very good", "premium" and "ideal" diamonds form roughly 88% (~87.91) of the data with diamonds of ideal cut being highest in number.  
+3. `color`- Diamonds with color rating "G" are highest in number with "J", the lowest quality, being least.  
+
+4. `clarity`- `summary(df1)` shows a category as "(others)" above. Use `summary(df1$clarity)` to see all the levels clearly. "others" has masked two levels- I1, IF.  
+
+5. `depth` featue seems symmetric and tightly distributed. In other words, most of the datapoints lie close to the mean/median value of 61.75.  
+
+6. In order to avoid confusion, I'll rename the column "z" to depth & "depth" to "depth_perc" (depth percentage).  
+
+7. `z` which reflects depth of a diamond has a minimum value of 0.000;
+it seems quite unlikely for a diamond to have absolutely no depth!  
+
+8. Similarly, `x` and `y` too have minimum value of 0.000mm. Maybe it's the same rows where z = 0.000. This will be checked later.  
+
+## **Data Cleaning** 
+
+### **1. Missing Values- none**  
+
+I've added 2 methods to see missing values here, one is through code result and the other is grahical.  
+
+#### **1. Usual method of checking missing values** 
+
+`sum(is.na(df))` counts total number of NA's in entire dataframe.
+
+```{r na1-1}
+#count NAs in entire dataframe
+sum(is.na(df1))
+```
+
+The method below computes missing values in each column.  
+
+```{r na1-2}
+#NAs in each row
+rbind(colSums(is.na(df1)))
+```
+
+#### **2. Graph of Missing values**
+
+Below, `vis_miss()` of visdata package has been used to build a graph of missing values. Since, no missing values present, hence the entire graph is grey, if missing values were present, we would have seen some horizontal lines inside each column.
+
+<span style="color:blue">***`vis_miss()` is ggplot-based, so ggplot2 functions can be added as layers to improve aesthetics.***</span>
+
+```{r na2-graph, fig.width=6, fig.height=4, fig.align='center'}
+visdat::vis_miss(df1)+
+  theme(axis.title.y = element_text(size = 10),
+        axis.text = element_text(color = "black", size = 8))
+```
+
+### **2. Duplicate Rows- found.**  
+
+```{r duplicate-count}
+
+#total number of duplicate rows
+sum(duplicated(df1))
+```
+
+```{r duplicate-view}
+
+#view all duplicate rows
+df1[duplicated(df1),]
+```
+
+It is highly unlikely for diamonds to have exactly all 10 features with same values. While price, cut, clarity etc. can be same, even length, width and depth, table have exactly same measurements. 
+So, I'm removing these duplicate rows.  
+
+```{r remove-duplicate}
+#remove duplicate rows
+df1_unique <- df1 %>% distinct()
+```
+
+### **3. Rename columns**
+
+```{r rename-columns}
+
+#renaming some columns to avoid confusion
+df1_unique <- df1_unique %>% 
+                rename(length = x,
+                       width = y,
+                       depth = z,
+                       depth_perc = depth)
+```
+
+
+### **4. Check for unsual values**
+
+As mentioned earlier, **`length`, `width`, `depth`** have a minimum value of 0.000mm which seems unlikely for any diamond. 
+
+```{r}
+summary(df1_unique[,c('length', 'width', 'depth')])
+```
+
+Depth percentage is calculated as : $2*z/(x+y)$.  
+If depth is 0, then depth% should also be 0.
+
+#### **Length column**
+
+```{r zero_length_rows}
+df1_unique %>% subset(length < 0.001, select = c(carat, length, width,depth, depth_perc))
+```
+
+All 7 rows have depth 0 but some value in $depth\%$ column, which is just not possible!  
+
+#### **Width column**
+
+
+```{r width_zero_rows}
+
+#checking rows with width 0
+df1_unique %>% 
+  subset(width < 0.001,
+         select = c(carat, length, width, depth,depth_perc))
+```
+
+All these rows with 0 length and width also have depth=0.  
+
+#### **Depth column**
+
+```{r depth_zero}
+
+#see all rows with depth 0
+df1_unique %>% 
+  subset(depth < 0.001,
+         select = c(carat, length, width, depth, depth_perc))
+```
+
+Since there are 19 rows with depth=0.000, I'll start by first removing these rows and see how many length=0 or width=0 get eliminated.  
+
+```{r remove_width_zero}
+
+#remove rows with width=0.000
+df1_unique <- df1_unique %>% 
+                filter(depth > 0.001)
+```
+
+#### **Checking for values in length & width now:**
+
+```{r check_len_wid}
+
+#checking number of rows still left with length=0.000 or width=0.000
+df1_unique %>% 
+  subset(width < 0.001 | length < 0.001,
+         select = c(carat, length, width, depth, depth_perc))
+```
+
+Removing rows with depth=0.000 also removes rows with length=0.000, width=0.000.  
+
+## **All Data-Distribution Graphs**
+
+```{r set_common_theme}
+theme_set(
+  theme_bw()+
+  theme(axis.text = element_text(color = "black", size = 9, face = "bold"),
+        axis.title = element_text(size = 8, face = "bold"),
+        plot.title = element_text(size = 9, hjust = 0.5),
+        plot.subtitle = element_text(size = 8, hjust = 0.5)
+        )
+)
+
+```
+
+
+### 1. Categorical Features- cut, color, clarity.  
+
+#### a) Barcharts
+
+```{r barchart}
+
+#total count of each diamond-type in dataset
+df1_unique %>% 
+  ggplot(aes(x=cut))+
+  geom_bar(color = "steelblue", fill = "lightblue", width = 0.5)+
+  geom_text(aes(label = ..count..), stat = "count", size = 2, 
+            fontface = "bold", vjust = -0.5)+
+  labs(title = "Ideal diamonds are highest in number",
+       x = "type of cut", y = "total count in the dataset")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
