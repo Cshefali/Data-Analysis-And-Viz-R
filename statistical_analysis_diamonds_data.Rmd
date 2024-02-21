@@ -36,8 +36,7 @@ library(scales)
 library(ggExtra)
 ```
 
-This notebook contains the most popular data distribution charts used to analyse a dataset in initial phase.  
-Then it analyses and draws conclusion on each feature.  
+This notebook contains a list of most popular data distribution charts used to analyse a dataset in initial phase followed by a detailed analysis.
 
 ## **Data description**
 
@@ -60,12 +59,6 @@ It is calculated as: $depth\% = z / mean(x + y)$. To simplify, $depth\% = 2z / (
 - `price`- price of diamonds in USD. 
 
 **The key benchmark descriptors of a diamond are the 4 Cs- carat, color, cut and clarity.**
-
-## **TLDR- Quick Summary Table**  
-
-[click on a line to move to that part of code]  
-
-<ADD A CUSTOM TABLE>  
 
 
 ```{r data-summary}
@@ -661,7 +654,7 @@ df1_unique %>%
 
 ### **3. Which type of diamonds are most abundant considering cut, color and  clarity?**
 
-```{r grid_plot}
+```{r grid_plot, fig.width=10, fig.height=8, warning=FALSE,message=FALSE}
 
 #grouped by cut, clarity and color
 df1_unique %>% 
@@ -670,11 +663,203 @@ df1_unique %>%
   ggplot(aes(x=cut, y= total_count, fill = cut))+
   geom_bar(stat = "identity")+
   scale_y_continuous(expand = expansion(mult = c(0,0.05)))+
-  facet_grid(clarity~color)
+  facet_grid(clarity~color)+
+  theme(
+    strip.text.x = element_text(size = 5, margin = margin(t=0.4,b=0.4), face = "bold"),
+    strip.text.y = element_text(size = 5,face = "bold", margin = margin(r=0.4,l=0.4)),
+    axis.text = element_text(size = 6),
+    axis.text.x = element_text(angle = 90)
+  )+
+  labs(title = "Diamond frequency based on 3Cs",
+       y="")
+
+```
+
+**Observations**  
+
+1. Ideal diamonds- 'E' color and 'VS2' clarity are the most abundant.  
+2. Majority of diamods lie in the clarity rating of 'VS2','SI1' & 'SI2'.  
+
+### **4. Trends in Price & Carat with the 3Cs**
+
+#### **a) Cut**
+
+```{r cut_price_boxplot, fig.width=10, fig.height=6}
+cut_price <- df1_unique %>% 
+              ggplot(aes(x=cut, fill = cut, y = price))+
+              stat_boxplot(geom = "errorbar", width = 0.3)+
+              geom_boxplot(color = "black", outlier.colour = "red",
+                           outlier.size = 0.3)+
+              labs(title = "Price distribution of diamonds based on cut")+
+  theme(legend.position = "none")
+#carat-cut boxplot
+cut_carat <- df1_unique %>% 
+  ggplot(aes(x=cut, y = carat, fill = cut))+
+  stat_boxplot(geom = "errorbar", width = 0.3)+
+  geom_boxplot(color = "black", outlier.colour = "red", outlier.size = 0.6)+
+  labs(title = "Carat distribution with respect to cut")+
+  theme(legend.position = "none")
+
+cut_price + cut_carat
+```
+
+**Observation:**  
+
+- Ideal cut diamonds are the best and 'Fair' cut is the worst, among all; yet the the median price of Ideal diamonds is the lowest!  
+
+```{r ideal_quantile}
+#checking the quantile values for Ideal diamonds
+print("Carat percentile of Ideal diamonds")
+quantile(df1_unique$carat[df1_unique$cut == "Ideal"])
+
+```
+
+- Although Ideal diamonds account for 39% of the dataset, 75% of them are below 1 carat & 50% of all ideal diamonds are not even half a carat, which to some extent explains why median price of ideal diamonds is lower.  
+
+#### **b) Color**
+
+
+```{r color_price_boxplot, fig.width=10, fig.height=6}
+
+#boxplot of color and price of diamond
+color_price <- df1_unique %>% 
+  ggplot(aes(x=color, y = price, fill = color))+
+  stat_boxplot(geom = "errorbar", width = 0.3)+
+  geom_boxplot(color = "black", outlier.colour = "red",
+               outlier.size = 0.4)+
+  labs(title = "Price distribution with respect to diamond color")+
+  theme(legend.position = "none")
+
+#boxplot of color and carat
+color_carat <- df1_unique %>% 
+  ggplot(aes(x=color, y = carat, fill = color))+
+  stat_boxplot(geom = "errorbar", width = 0.3)+
+  geom_boxplot(color = "black", outlier.colour = "red",
+               outlier.size = 0.4)+
+  labs(title = "Carat distribution with respect to diamond color")+
+  theme(legend.position = "none") 
+
+#stitch both graphs
+color_price + color_carat
+
+```
+
+**Observations:**  
+
+1. D-F rated diamonds are colorless and of highest quality, yet as we move from D (best) to J (worst), the median diamond price increases!  
+
+```{r carat-color_quantile}
+print("Carat percentile of D-rated diamonds")
+quantile(df1_unique$carat[df1_unique$color == "D"],
+         probs = c(0,25,50,75,90,99)/100)
+print("Carat percentile of J-rated diamonds")
+quantile(df1_unique$carat[df1_unique$color == "J"],
+         probs = c(0,25,50,75,90,99)/100)
+```
+2. 99% D-rated diamonds are below 1.71 carats.  
+3. 50% of D-rated diamonds are below 0.5 carats whereas median carat for J-rated diamond is 1.11.  
+
+***We can observe from these readings that carat of a diamond seems to play a crucial role in price determination even though color, cut is of highest quality.***
+
+
+### **c) Clarity**
+
+```{r clarity_price_boxplot, fig.width=10, fig.height=6}
+
+#boxplot for price of diamone and their clarity
+clarity_price <- df1_unique %>% 
+                  ggplot(aes(x=clarity, y = price, fill = clarity))+
+                  stat_boxplot(geom = "errorbar", width = 0.3)+
+                  geom_boxplot(color = "black", outlier.colour = "red", outlier.size = 0.4)+
+                  labs(title = "price distribution with respect to clarity")+
+  theme(legend.position = "none")
+
+#boxplot for clarity and carat
+clarity_carat <- df1_unique %>% 
+                  ggplot(aes(x=clarity, y = carat, fill = clarity))+
+                  stat_boxplot(geom = "errorbar", width = 0.3)+
+                  geom_boxplot(color = "black", outlier.colour = "red", outlier.size = 0.4)+
+                  labs(title = "carat distribution with respect to clarity")+
+  theme(legend.position = "none")
+
+#stitch graphs
+clarity_price + clarity_carat
+```
+
+**Observation**  
+
+Even though 'IF' and 'VVS1' are diamonds with maximum brilliance, their median price is less than diamonds with low clarity rating! 
+
+**So, to summarize:**  
+
+- As the quality of diamonds increased within each rating category- cut, clarity, color, the median price decreased.  
+- This was somewhat unexpected but it also indicates that the price of a diamond cannot be estimated correctly if we know only one or two of these ratings.  
+- The weight of the diamond, carats, seems to play a more important role in price determination (ofc, along with these 3 qualities).
+
+
+### **5. Relationship between price and carat of diamonds**
+
+```{r scatter_plot}
+
+(cut_scatter <- df1_unique %>% 
+  ggplot(aes(x=carat, y=price, color = cut))+
+  geom_point()+
+  #scale_y_continuous(expand = expansion(mult = c(0,0.05)))+
+  labs(title = "As carat increases, prices tend to go up",
+       y = "price in USD"))
+
+```
+
+### **6. Correlation between features**
+
+The correlation matrix helps to quantify the dependency between all relevant features.  
+Since, depth_perc is calculated using length, width & depth values, these 3 features have been excluded.
+
+```{r}
+#select relevant features
+corr_dataset <- df1_unique %>% 
+                  select(cut, color, clarity,depth_perc,carat, price)
+```
+
+- There are 3 columns of type 'factor' in our data- color, cut & clarity.  
+- Color and Cut have levels in ascending order of the quality. They are ordered from worst to best. For e.g. Quality of diamond cut- "Fair" has level 1 < "Good" is level 2, and so on. Similarly, for clarity- "I1" is 1, ...,"IF" is 8, which is the best.  
+
+- This is not the case with colors column. It is ordered as "D" (1) < "E" (2) < ... < "J" (7). D is best rating but it has level of 1.  
+
+- I've changed the order from worst to best for color column below, i.e. "J" gets level 1, "D" gets level 7.  
+
+```{r}
+corr_dataset$color <- factor(corr_dataset$color,
+                             levels = c("J", "I", "H", "G", "F", "E", "D"), ordered = T)
+##checking the order
+#levels(corr_dataset$color)[7]
 
 ```
 
 
 
+```{r}
+
+# Convert the factor to numeric
+#correlation matrix can be created with numeric values only
+#this replaces values like "ideal" with their ordering number.
+corr_dataset$color <- as.numeric(corr_dataset$color)
+corr_dataset$clarity <- as.numeric(corr_dataset$clarity)
+corr_dataset$cut <- as.numeric(corr_dataset$cut)
+```
+
+```{r corr_matrix}
+cor(corr_dataset)
+```
+
+```{r}
+#correlation graph
+visdat::vis_cor(corr_dataset)
+```
 
 
+## **Conclusion**
+
+- Correlation matrix shows that carat has a very strong positive relationship with price of diamonds.  
+- Other qualitative factors like color, cut, clarity have a weak relationship with price for this dataset.  
+- Carat seems to be the driving factor for price of diamonds.
