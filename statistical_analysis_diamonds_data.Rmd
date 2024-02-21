@@ -268,25 +268,6 @@ df1_unique %>%
               fontface = "bold", vjust = -0.5)+
     labs(title = "Ideal diamonds are highest in number",
          x = "type of cut", y = "total count in the dataset")
-
-#total count of diamonds of each color type
-# color_count <- df1_unique %>%
-#               ggplot(aes(x=color))+
-#               geom_bar(color = "steelblue", fill = "lightblue", width = 0.5)+
-#               geom_text(aes(label = after_stat(count)), stat = "count", size = 2,
-#                         fontface = "bold", vjust = -0.5)+
-#               labs(title = "Diamonds of color E,F,G form 56.8% of the dataset",
-#                    x = "color of diamond", y = "total count in the dataset")
-# 
-# #total count of diamonds of each clarity type
-# clarity_count <- df1_unique %>% 
-#               ggplot(aes(x=clarity))+
-#               geom_bar(color = "steelblue", fill = "lightblue", width = 0.5)+
-#               geom_text(aes(label = after_stat(count)), stat = "count", size = 2, 
-#                         fontface = "bold", vjust = -0.5)+
-#               labs(title = "Diamond clarity",
-#                    x = "diamond clarity", y = "total count in the dataset")
-
 ```
 
 #### **b) HeatMaps**
@@ -573,4 +554,127 @@ ggExtra::ggMarginal(scatter_plot, type = "histogram",
 
 ### **1. Total number of diamonds in each category of cut, color and clarity**
 
-<bar chart, patch all 3>
+```{r individual_barcharts}
+
+##individual plots
+#total count of each diamond-type in dataset
+cut_count <- df1_unique %>%
+    ggplot(aes(x=cut))+
+    geom_bar(color = "steelblue", fill = "lightblue", width = 0.5)+
+    geom_text(aes(label = paste0(round((after_stat(count)/sum(count))*100,2),"%")), 
+              stat = "count", size = 2,
+              fontface = "bold", vjust = -0.5)+
+    scale_y_continuous(expand = expansion(mult = c(0,0.07)))+
+    coord_cartesian(clip = "off")+
+    labs(title = "Ideal diamonds are highest in number",
+         x = "type of cut", y = "total count in the dataset")
+
+#total count of diamonds of each color type
+color_count <- df1_unique %>%
+              ggplot(aes(x=color))+
+              geom_bar(color = "steelblue", fill = "lightblue", width = 0.5)+
+              geom_text(aes(label = paste0(round((after_stat(count)/sum(count))*100,2),"%")), 
+                        stat = "count", size = 2,
+                        fontface = "bold", vjust = -0.5)+
+              scale_y_continuous(expand = expansion(mult = c(0,0.07)))+
+              coord_cartesian(clip = "off")+
+              labs(title = "Diamonds of color E,F,G form 56.8% of the dataset",
+                   x = "color of diamond", y = "")
+
+#total count of diamonds of each clarity type
+clarity_count <- df1_unique %>%
+              ggplot(aes(x=clarity))+
+              geom_bar(color = "steelblue", fill = "lightblue", width = 0.5)+
+              geom_text(aes(label = paste0(round((after_stat(count)/sum(count))*100,2),"%")), 
+                        stat = "count", size = 2,
+                        fontface = "bold", vjust = -0.5)+
+              scale_y_continuous(expand = expansion(mult = c(0,0.07)))+
+              coord_cartesian(clip = "off")+
+              labs(title = "Diamond clarity",
+                   x = "diamond clarity", y = "")
+```
+
+```{r stitched_barcharts, fig.width=10}
+
+#stitch all bar charts
+cut_count + color_count + clarity_count
+
+```
+
+**Observations:**  
+
+1. The dataset contains super-quality diamonds in terms of their cut; 'Premium' & 'Ideal' diamonds are most abundant.  
+
+2. Diamonds with color rating 'G' are highest in number followed by 'E'. D-F color rating diamonds are colorless, hence of better standards. G-J rated diamonds have a yellowish tint as we progress from G < H < I < J.  
+'G' diamonds lie on the margin of these 2 groups and they are most abundant in the dataset.  
+
+3. "IF", 'Internally Flawless' diamonds are the best in terms of clarity and they have the second lowest count in our dataset. 
+
+The 4Cs- carat, cut, color, clarity are considered the benchmarks for assessing diamonds and in upcoming section, we'll see how each of these factors affect the diamond price individually and together.  
+
+### **2. Frequency of diamonds based on 2 features** 
+
+```{r individual_heatmaps, message=FALSE, warning=FALSE,fig.width=10}
+
+cut_color_heatmap <- df1_unique %>% 
+                      group_by(cut, color) %>% 
+                      summarize(total_count = n()) %>% 
+                      ggplot(aes(x=cut, y = color, fill = total_count))+
+                      geom_tile(color = "black")+
+                      scale_x_discrete(expand = c(0,0))+
+                      scale_y_discrete(expand = c(0,0))+
+                      scale_fill_gradient(low = "yellow",
+                                          high = "firebrick",
+                                          guide = guide_colorbar(title = "diamonds count", title.theme = element_text(size = 7, face = "bold", vjust = 2)))+
+                      labs(title = "Ideal diamonds with color rating 'G' are most abundant")
+
+#cut and clarity
+cut_clarity_heatmap <- df1_unique %>% 
+                      group_by(cut, clarity) %>% 
+                      summarize(total_count = n()) %>% 
+                      ggplot(aes(x=cut, y = clarity, fill = total_count))+
+                      geom_tile(color = "black")+
+                      scale_x_discrete(expand = c(0,0))+
+                      scale_y_discrete(expand = c(0,0))+
+                      scale_fill_gradient(
+                                          low = "yellow",
+                                          high = "firebrick",
+                                          guide = guide_colorbar(title = "diamonds count", title.theme = element_text(size = 7, face = "bold", vjust = 2)))+
+                      labs(title = "Ideal diamonds with VS2 clarity are most abundant")
+
+cut_color_heatmap + cut_clarity_heatmap
+
+```
+
+```{r message=FALSE, warning=FALSE}
+df1_unique %>% 
+  group_by(color, clarity) %>% 
+  summarize(count = n()) %>% 
+  ggplot(aes(x=color, y=clarity, fill=count))+
+  geom_tile(color = "black")+
+  scale_x_discrete(expand = c(0,0))+
+  scale_y_discrete(expand = c(0,0))+
+  scale_fill_gradient(low = "yellow", high = "firebrick",
+                      guide = guide_colorbar(title = "diamonds count", title.theme = element_text(size = 8, face = "bold")))+
+  labs(title = "Majority of diamonds with color rating 'E' have clarity SI1 or VS2")
+```
+
+### **3. Which type of diamonds are most abundant considering cut, color and  clarity?**
+
+```{r grid_plot}
+
+#grouped by cut, clarity and color
+df1_unique %>% 
+  group_by(cut, color, clarity) %>% 
+  summarize(total_count = n()) %>% 
+  ggplot(aes(x=cut, y= total_count, fill = cut))+
+  geom_bar(stat = "identity")+
+  scale_y_continuous(expand = expansion(mult = c(0,0.05)))+
+  facet_grid(clarity~color)
+
+```
+
+
+
+
+
