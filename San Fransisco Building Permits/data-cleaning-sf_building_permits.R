@@ -243,8 +243,143 @@ all(dates_correct_format)
 false_date_formats <- colSums(!dates_correct_format, na.rm = T)
 
 #Checking whether first 2 digits reflect month or not
-unique(date_columns %>% 
-  mutate(across(everything(),
-                ~str_extract(.,
-           pattern = "^\\d+(?=/)")
-  )))
+month_values <- date_columns %>% 
+                  mutate(across(everything(),
+                                ~str_extract(.,
+                           pattern = "^\\d+(?=/)")
+                  ))
+
+#keep only unique values--#gives error because number of unique values different
+#in different columns resulting in columns with different sizes
+# month_values <- month_values %>% 
+#                   mutate(across(everything(),
+#                              ~unique(.)
+#                   ))
+
+#convert all columns to numeric
+month_values <- month_values %>% 
+                  mutate(across(everything(),
+                                ~as.integer(.)))
+
+#check min-max values in each column
+month_range <- month_values %>% 
+                summarise(across(everything(),
+                                 list(min_value = ~min(.,na.rm = T),
+                                      max_value = ~max(., na.rm = T)))) %>% 
+                pivot_longer(everything(),
+                             names_to = "stat",
+                             values_to = "value")
+
+#checking whether 'day' column contains values between 1 and 31 or not
+day_values <- date_columns %>% 
+                mutate(across(everything(),
+                              ~str_extract(.,
+                                           pattern = "(?<=/)\\d{2}(?=/)")))
+
+#convert all day values to numeric
+day_values <- day_values %>% 
+                mutate(across(everything(),
+                              ~as.integer(.)))
+
+#checking min/max values in dates. They should fall between 01 to 31
+#ALL GOOD
+day_range <- day_values %>% 
+              summarise(across(everything(),
+                               list(
+                                 min_value = ~min(., na.rm = T),
+                                 max_value = ~max(., na.rm = T)
+                               ))
+                        ) %>% 
+            pivot_longer(everything(),
+                         names_to = "stat",
+                         values_to = "value")
+
+#checking all unique years in the dataframe
+years_value <- date_columns %>% 
+                mutate(across(everything(),
+                              ~as.integer(str_extract(.,
+                                                      pattern = "(?<=/)\\d+$"))))
+
+#Unique years in each column
+unique(years_value$permit_creation_date)
+unique(years_value$current_status_date)
+unique(years_value$filed_date)
+unique(years_value$issued_date)
+unique(years_value$completed_date)
+unique(years_value$first_construction_document_date)
+unique(years_value$permit_expiration_date)
+
+#Convert all date columns in sf_data to date data type
+sf_data <- sf_data %>% 
+            mutate(across(contains("date"), mdy))
+
+#Convert columns with numeric value-definition pair into factors.
+
+##Existing Construction type
+
+#total NA values
+sum(is.na(sf_data$existing_construction_type)) #43366
+sum(is.na(sf_data$existing_construction_type_description)) #43366
+
+#All unique value and their definitions
+existing_cons_type <- sf_data %>% 
+                      select(existing_construction_type,
+                             existing_construction_type_description) %>% 
+                      distinct() %>% 
+                      arrange(existing_construction_type)
+
+#convert all types to factor
+existing_cons_type <- existing_cons_type %>% 
+                      mutate(existing_construction_type_description =
+                               as.factor(existing_construction_type_description))
+
+#convert the construction type in sf_Data to factor
+sf_data$existing_construction_type_description <- factor(
+  sf_data$existing_construction_type_description,
+  levels = existing_cons_type$existing_construction_type_description
+)
+
+##Proposed Construction Type
+
+#total na values
+sum(is.na(sf_data$proposed_construction_type)) #43,162
+sum(is.na(sf_data$proposed_construction_type_description)) #43,162
+
+#all unique categories in these columns
+proposed_cons_type <- sf_data %>% 
+                        select(proposed_construction_type,
+                               proposed_construction_type_description) %>% 
+                        distinct() %>% 
+                        arrange(proposed_construction_type)
+
+#convert all proposed cons type categories to factors
+proposed_cons_type <- proposed_cons_type %>% 
+                        mutate(proposed_construction_type_description = 
+                                 factor(proposed_construction_type_description))
+
+#convert this column in sf_dataframe to factor
+sf_data$proposed_construction_type_description <- factor(
+  sf_data$proposed_construction_type_description,
+  levels = proposed_cons_type$proposed_construction_type_description
+)
+
+##Fix Location column
+
+#check for all special characters
+unique(str_extract_all(sf_data$location,
+                   pattern = "[^0-9]"))
+
+#remove paranthesis
+sf_data$location <- stringr::str_replace_all(sf_data$location,
+                                             pattern = "[(|)]",
+                                             replacement = "")
+#checking whether any regular expression remains
+any(str_detect(sf_data$location,
+               pattern = "[(|)]"),
+    na.rm = T)
+
+#split the longitude and latitude into 2 columns
+sf_data <- sf_data %>%
+            tidyr::separate_wider_delim(cols = "location",
+                                        delim = ",",
+                                        names = c("longitude", "latitude"))
