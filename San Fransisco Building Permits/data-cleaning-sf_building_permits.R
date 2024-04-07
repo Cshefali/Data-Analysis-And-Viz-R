@@ -1,5 +1,5 @@
 #Data Cleaning- San Fransisco Building Permits 
-#Last Update- Apr 6, 2024
+#Last Update- Apr 7, 2024
 #Author- Shefali C.
 
 library(tidyverse)
@@ -173,7 +173,7 @@ unique(str_extract_all(date_columns$filed_date,
 unique(str_extract_all(date_columns$issued_date,
                    pattern = "[^0-9]")) #some columns contain "NA"
 #checking which columns contain "NA" as character
-View(date_columns %>% filter(issued_date == "NA"))
+#View(date_columns %>% filter(issued_date == "NA"))
 
 #Completed Date
 unique(str_extract_all(date_columns$completed_date,
@@ -188,40 +188,63 @@ unique(str_extract_all(date_columns$permit_expiration_date,
 
 ##Check the arrangement of day,month, year in each column
 ##At first glance, pattern seems like- mm/dd/yyyy
-all(str_detect(date_columns$permit_creation_date,
-               pattern = "\\d{2}/\\d{2}/\\d{4}")) #TRUE
 
-#Check whether the numbers fall in correct range or not
-#e.g. month shouldn't be less than 01 and greater than 12
+#Permit Creation Date
+# all(str_detect(date_columns$permit_creation_date,
+#                pattern = "\\d{2}/\\d{2}/\\d{4}")) #TRUE
+# 
+# #Check whether the numbers fall in correct range or not
+# #e.g. month shouldn't be less than 01 and greater than 12
+# 
+# #check month- all between 1 and 12
+# #look-ahead regex used
+# month_values <- as.integer(unique(str_extract(date_columns$permit_creation_date,
+#             pattern = "\\d+(?=/)")))
+# min(month_values)
+# max(month_values)
+# 
+# #check day- all should be between 1 and 31
+# day_values <- as.integer(
+#   unique(str_extract(date_columns$permit_creation_date,
+#                      pattern = "(?<=/)(\\d+)(?=/)"))
+# )
+# 
+# #check min value
+# min(day_values)
+# max(day_values)
+# 
+# #checking years
+# years_values <- as.integer(
+#   unique(
+#     str_extract(date_columns$permit_creation_date,
+#                 pattern = "(?<=/\\d{2}/)\\d+")
+#     )
+#   )
+# 
+# #Years proceed from 2012 to 2018
+# min(years_values)
+# max(years_values)
+# 
+# #Now, we can convert this column to date format
+# date_columns$permit_creation_date <- lubridate::mdy(date_columns$permit_creation_date)
 
-#check month- all between 1 and 12
-#look-ahead regex used
-month_values <- as.integer(unique(str_extract(date_columns$permit_creation_date,
-            pattern = "\\d+(?=/)")))
-min(month_values)
-max(month_values)
+#Current Status Date
 
-#check day- all should be between 1 and 31
-day_values <- as.integer(
-  unique(str_extract(date_columns$permit_creation_date,
-                     pattern = "(?<=/)(\\d+)(?=/)"))
-)
+#check for the pattern- 2 digits/2 digits/4 digits in all dates column
+dates_correct_format <- date_columns %>% 
+                        mutate(across(everything(), 
+                                      ~str_detect(.,
+                                                  pattern = "\\d{2}/\\d{2}/\\d{4}"
+                                                  )))
 
-#check min value
-min(day_values)
-max(day_values)
+#checking if all values return TRUE, implies dates follow correct pattern
+all(dates_correct_format)
+#checking number of false values in each date column--None
+false_date_formats <- colSums(!dates_correct_format, na.rm = T)
 
-#checking years
-years_values <- as.integer(
-  unique(
-    str_extract(date_columns$permit_creation_date,
-                pattern = "(?<=/\\d{2}/)\\d+")
-    )
-  )
-
-#Years proceed from 2012 to 2018
-min(years_values)
-max(years_values)
-
-#Now, we can convert this column to date format
-date_columns$permit_creation_date <- lubridate::mdy(date_columns$permit_creation_date)
+#Checking whether first 2 digits reflect month or not
+unique(date_columns %>% 
+  mutate(across(everything(),
+                ~str_extract(.,
+           pattern = "^\\d+(?=/)")
+  )))
