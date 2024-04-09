@@ -383,3 +383,119 @@ sf_data <- sf_data %>%
             tidyr::separate_wider_delim(cols = "location",
                                         delim = ",",
                                         names = c("longitude", "latitude"))
+#remove white spaces from both columns
+#latitude
+sf_data$latitude <- gsub(pattern = "\\s+",
+                         replacement = "",
+                         sf_data$latitude)
+#longitude
+sf_data$longitude <- gsub(pattern = "\\s+",
+                          replacement = "",
+                          sf_data$longitude)
+
+#checking for total missing values before conversion to float type
+#1700 NA values in each
+rbind(colSums(is.na(subset(sf_data, select = c(latitude, longitude)))))
+
+      
+#convert both columns to double type
+sf_data <- sf_data %>% 
+            mutate(latitude = as.numeric(latitude),
+                   longitude = as.numeric(longitude))
+
+#ZipCodes
+#San Fransisco's zipcode lies between 94,102 to 94, 188. 
+#Check for presence of Zipcodes beyond San Fransisco
+
+summary(sf_data$zipcode) #max is 94,158
+
+#Description
+View(sf_data %>% select(description))
+
+#Current status
+unique(sf_data$current_status) #14 unique terms
+
+#convert Current status to factors
+sf_data$current_status <- factor(sf_data$current_status,
+                                 levels = unique(sf_data$current_status))
+
+#total missing values in this column--None
+sum(is.na(sf_data$current_status))
+
+#check for any non-alphabetic characters withing the values--NONE
+any(str_detect(sf_data$current_status,
+               pattern = "[^a-zA-Z]"))
+
+#Number of existing stories, proposed stories
+glimpse(subset(sf_data, 
+               select = c(number_of_existing_stories,
+                          number_of_proposed_stories)))
+
+#missing values in both
+na_count %>% filter(column_name %in% c('number_of_existing_stories',
+                                       'number_of_proposed_stories'))
+
+#checking for all unique values
+unique(sf_data$number_of_existing_stories)
+unique(sf_data$number_of_proposed_stories)
+
+##Cost columns
+
+#estimated cost and revised cost
+#missing values
+na_count %>% filter(column_name %in% c('estimated_cost',
+                                      'revised_cost'))
+
+#unique values
+summary(sf_data %>% select(estimated_cost, revised_cost))
+#number of rows where revised cost is 0 --> 8513 rows
+nrow(sf_data %>% 
+       filter(revised_cost == 0))
+
+#filter rows where estimated cost is 1$
+View(sf_data %>% select(estimated_cost, revised_cost) %>% 
+       filter(estimated_cost == 1))
+
+##Existing use, Proposed use
+#missing values
+na_count %>% filter(column_name %in% c('existing_use', 'proposed_use'))
+
+#unique values
+unique(sf_data$existing_use)
+
+#Number of observations for each usage
+unique_existing_use <- sf_data %>%
+                        filter(!is.na(existing_use)) %>% 
+                        count(existing_use, name = "total") %>% 
+                        arrange(-total)
+
+#proposed use
+unique_proposed_use <- sf_data %>% 
+                        filter(!is.na(proposed_use)) %>% 
+                        count(proposed_use, name = "total") %>% 
+                        arrange(-total)
+
+##Existing units, Proposed Units
+
+na_count %>% filter(column_name %in% c('existing_units',
+                                       'proposed_units'))
+
+summary(sf_data$existing_units)
+#0 existing units
+nrow(sf_data %>% filter(existing_units == 0)) #29,134
+nrow(sf_data %>% filter(proposed_units == 0)) #26884
+
+unique(sf_data$plansets) #[1]    2, 0, NA, 6, 4, 3, 20, 9000, 1
+
+View(sf_data %>% select(supervisor_district))
+unique(sf_data$supervisor_district) #[1]  3  6 10  5  8  2  9  4  1  7 11 NA
+
+glimpse(sf_data$neighborhoods_analysis_boundaries) #names
+length(unique(sf_data$neighborhoods_analysis_boundaries)) #42 unique values
+
+#total number of observations for each unique neighborhood
+neighbourhood_unique <- sf_data %>% 
+                        filter(!is.na(neighborhoods_analysis_boundaries)) %>% 
+                        count(neighborhoods_analysis_boundaries,
+                              name = "total") %>% 
+                        arrange(-total)
