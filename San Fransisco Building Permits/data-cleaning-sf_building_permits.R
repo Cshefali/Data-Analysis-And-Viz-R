@@ -1,9 +1,8 @@
 #Data Cleaning- San Fransisco Building Permits 
-#Last Update- Apr 7, 2024
+#Last Update- Apr 10, 2024
 #Author- Shefali C.
 
 library(tidyverse)
-library(data.table)
 library(janitor)
 library(readxl)
 library(writexl)

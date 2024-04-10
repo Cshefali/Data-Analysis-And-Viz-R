@@ -1,0 +1,204 @@
+---
+title: "San Francisco Building Permits Data Cleaning"
+author: "Shefali C."
+date: "2024-04-10"
+output: 
+      prettydoc::html_pretty:
+        theme: cayman
+        highlight: vignette
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The dataset has been taken from [here](https://www.kaggle.com/datasets/aparnashastry/building-permit-applications-data) on Kaggle.  
+
+> This data set pertains to all types of structural permits from Jan 1, 2013-Feb 25th 2018. Data includes details on application/permit numbers, job addresses, supervisorial districts, and the current status of the applications.  
+
+There are a total of 43 columns and 200K rows in the dataset.  
+
+```{r load-libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(janitor)
+library(readxl)
+library(writexl)
+```
+
+
+
+```{r read-data, message=FALSE, warning=FALSE}
+
+#data folder
+data_path <- paste0(getwd(),"/sf_building_data")
+#image folder path to save images
+img_path <- paste0(getwd(),"/images/")
+
+#read csv file
+sf_data <- readr::read_csv(paste0(data_path, "/Building_Permits.csv"))
+```
+
+
+## Data Cleaning Steps:  
+
+### 1. **Make column-names uniform-** 
+
+All lowercase, remove special symbols like "/" or "-" etc., replace separators with underscore. 
+
+```{r clean-colnames}
+
+#make column names uniform
+sf_data <- janitor::clean_names(sf_data)
+```
+
+### 2. **Missing values-**  
+
+**Total number of missing values in each column and % of missing rows:**
+
+```{r missing-values}
+
+#Display the number of missing values stats as in column form
+
+na_count <-sapply(sf_data, function(y) sum(length(which(is.na(y)))))
+na_count <- data.frame(na_count)
+na_count <- tibble::rownames_to_column(na_count, "column_name")
+#add a column with percentage of NA values in each column
+na_count$percent_blank_rows <- round((na_count$na_count/nrow(sf_data))*100,1)
+
+#glimpse at missing count dataframe
+head(na_count %>% arrange(-na_count))
+``` 
+
+**Remove columns with more than 80% blank rows:**
+
+```{r remove-na-rows}
+#filter all columns with more than 80% blank rows
+na_count %>% filter(percent_blank_rows > 80)
+
+#REmove columns which have more than 80% NA values
+sf_data <- sf_data %>% select(-c(street_number_suffix, #98.9% blank
+                                 unit, #85.2% blank
+                                 unit_suffix, #99% blank
+                                 structural_notification, #96.5% blank
+                                 voluntary_soft_story_retrofit, #100%
+                                 fire_only_permit, #90.5%
+                                 tidf_compliance, #100%
+                                 site_permit) #97.3% blank
+                              )#select 
+```  
+
+**Check for rows with 50-80% blank rows:**
+
+```{r}
+##filter columns with more than 50% and less than 80% blank rows
+#Only 1, completed date: 51.1% blank rows
+na_count %>% filter(percent_blank_rows>=50 & percent_blank_rows<=80)
+
+```
+
+### 3. **Check for duplicate rows**  
+
+```{r duplicate-rows}
+
+#No duplicate rows
+sum(duplicated(sf_data)) # 0
+``` 
+
+### 4. **Data Type of columns**
+
+```{r cols-datatype}
+
+#Check whether data type of column matches with the type of values
+dplyr::glimpse(sf_data)
+
+``` 
+
+  i) **Character columns** 
+    - **Dates-** all columns with dates are in character format. They will need conversion to date type.  
+    - **Permit Number-** to check whether numeric or alphanumeric.  
+    - **Location-** needs to be separated into latitude, longitude cols & then converted to float type.  
+    
+  
+```{r chars-type}
+
+#display only character columns
+glimpse(sf_data %>% select(where(is.character))) #21 columns
+
+```
+
+  ii) **Integer columns**  
+  
+    - All columns to be checked for negative, invalid values.   
+    - **Zipcode-** range to be checked to ensure data is of SF.
+  
+```{r float-types}
+
+#display only float-type columns
+glimpse(sf_data %>% select(where(is.double))) #14 columns
+
+```
+
+### 5. **Fixing date columns:**  
+
+A subset of date-columns has been created to clearly observe anomalies.  
+
+```{r date-subset}
+
+#subset of only date columns
+date_columns <- sf_data %>% select(contains("date"))
+
+```
+
+
+- Initial pattern of dates seem like mm/dd/yyyy.  
+- Confirm whether all date columns follow this pattern.  
+- **Month- ** check whether first 2 digits fall in range 1-12.  
+- **Day- ** check whether middle 2 digits fall in range 1-31.  
+- **Year- ** last 4 digits valid years or not.  
+- convert all columns to `date` data-type.  
+
+#### a) Check for special characters in date columns:  
+
+If a character, other than "/" used to separate day-month-year values.  
+
+```{r date-separators}
+
+dates_separators <- date_columns %>% 
+                    filter(everything(), is.na) %>% 
+                    mutate(across(everything(),
+                                  ~str_extract_all(.,
+                                              pattern = "[^0-9]")))
+
+
+
+```
+
+
+
+#### b) Correct pattern of mm/dd/yyyy:  
+
+```{r date-pattern}
+#check for the pattern- 2 digits/2 digits/4 digits in all dates column
+dates_correct_format <- date_columns %>% 
+                        mutate(across(everything(), 
+                                      ~str_detect(.,
+                                                  pattern = "\\d{2}/\\d{2}/\\d{4}"
+                                                  )))
+```
+
+#### c) Check range of first 2 digits:  
+
+```{r}
+
+```
+
+
+  
+
+
+
+
+
+
+
+
