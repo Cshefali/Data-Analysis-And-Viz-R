@@ -1,62 +1,26 @@
----
-title: "San Francisco Building Permits Data Cleaning"
-author: "Shefali C."
-date: "2024-04-10"
-output: 
-      prettydoc::html_pretty:
-        theme: cayman
-        highlight: vignette
-        toc: true
----
+#Data Cleaning- San Fransisco Building Permits 
+#Last Update- Apr 10, 2024
+#Author- Shefali C.
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
 
-The dataset has been taken from [here](https://www.kaggle.com/datasets/aparnashastry/building-permit-applications-data) on Kaggle.  
-
-> This data set pertains to all types of structural permits from Jan 1, 2013-Feb 25th 2018. Data includes details on application/permit numbers, job addresses, supervisorial districts, and the current status of the applications.  
-
-There are a total of 43 columns and approx. 200K rows in the dataset.  
-
-```{r load-libraries, message=FALSE, warning=FALSE}
+#LOAD LIBRARIES
 library(tidyverse)
 library(janitor)
 library(readxl)
 library(writexl)
-```
-
-
-
-```{r read-data, message=FALSE, warning=FALSE}
 
 #data folder
 data_path <- paste0(getwd(),"/sf_building_data")
-#image folder path to save images
-img_path <- paste0(getwd(),"/images/")
 
 #read csv file
 sf_data <- readr::read_csv(paste0(data_path, "/Building_Permits.csv"))
-```
 
+##DATA CLEANING STEPS
 
-## Data Cleaning Steps:  
-
-### 1. **Make column-names uniform-** 
-
-All lowercase, remove special symbols like "/" or "-" etc., replace separators with underscore. 
-
-```{r clean-colnames}
-
-#make column names uniform
+#1. Uniform column names
 sf_data <- janitor::clean_names(sf_data)
-```
 
-### 2. **Missing values-**  
-
-**Total number of missing values in each column and % of missing rows:**
-
-```{r missing-values}
+#2. Missing Values
 
 #Display the number of missing values stats as in column form
 
@@ -72,20 +36,13 @@ missing_data_summary$percent_blank_rows <- round((missing_data_summary$total_na_
 #arrange the dataframe in decreasing order of total missing values
 missing_data_summary <- missing_data_summary %>% arrange(-total_na_values)
 
-head(missing_data_summary,4)
-``` 
-
-**Remove columns with more than 80% blank rows:**
-
-```{r remove-na-rows}
 
 ##Step 2.1) Remove columns with more than 90% blank rows.
 
 #filter all columns with more than 80% blank rows
 missing_data_summary %>% filter(percent_blank_rows > 80)
 
-
-#Remove columns which have more than 80% NA values
+#REmove columns which have more than 80% NA values
 sf_data <- sf_data %>% select(-c(street_number_suffix, #98.9% blank
                                  unit, #85.2% blank
                                  unit_suffix, #99% blank
@@ -94,104 +51,42 @@ sf_data <- sf_data %>% select(-c(street_number_suffix, #98.9% blank
                                  fire_only_permit, #90.5%
                                  tidf_compliance, #100%
                                  site_permit) #97.3% blank
-                              )#select 
-```  
-
-**Check for rows with 50-80% blank rows:**
-
-```{r na_values_50}
+)#select 
 
 ##Step 2b)
 ##filter columns with more than 50% and less than 80% blank rows
 #Only 1, completed date: 51.1% blank rows
 missing_data_summary %>% filter(percent_blank_rows>=50 & percent_blank_rows<=80)
 
-
-```
-
-### 3. **Check for duplicate rows**  
-
-```{r duplicate-rows}
-
-#No duplicate rows
+##Step 3- Check for duplicate rows
+#None found
 sum(duplicated(sf_data)) # 0
-``` 
 
-### 4. **Data Type of columns**
-
-```{r cols-datatype}
-
+##Step 4- Data type check.
 #Check whether data type of column matches with the type of values
 dplyr::glimpse(sf_data)
-
-``` 
-
-  i) **Character columns**  
-  
-  - **Dates-** all columns with dates are in character format. They will need conversion to date type.  
-  - **Permit Number-** to check whether numeric or alphanumeric.  
-  - **Location-** needs to be separated into latitude, longitude cols & then converted to float type.  
-    
-  
-```{r chars-type}
 
 #display only character columns
 glimpse(sf_data %>% select(where(is.character))) #21 columns
 
-```
-
-  ii) **Integer columns**  
-  
-  - All columns to be checked for negative, invalid values.   
-  - **Zipcode-** range to be checked to ensure data is of SF.
-  
-```{r float-types}
-
 #display only float-type columns
 glimpse(sf_data %>% select(where(is.double))) #14 columns
 
-```
+#display columns with dates
+glimpse(sf_data %>% select(contains("date"))) # 7
 
-### 5. **Fixing date columns:**  
+###               WORKING ON EACH COLUMN GROUP ONE BY ONE
 
-A subset of date-columns has been created to clearly observe anomalies.  
+##------------------DATE COLUMNS---------------------------------------
 
-```{r date-subset}
+# Fix Date Columns- check pattern, convert to date-type
 
-#subset of only date columns
+#create a subset of only date columns
 date_columns <- sf_data %>% select(contains("date"))
-
-```
-
-
-- Initial pattern of dates seem like mm/dd/yyyy.  
-- Confirm whether all date columns follow this pattern.  
-- **Month- ** check whether first 2 digits fall in range 1-12.  
-- **Day- ** check whether middle 2 digits fall in range 1-31.  
-- **Year- ** last 4 digits valid years or not.  
-- convert all columns to `date` data-type.  
-
-#### a) Check for special characters in date columns:  
-
-First, we list out all unique characters like "/", "-", ":" etc. that separate digits into mm-dd-yyyy in our date columns.  
-If different separators are present, we will use only one, here "/" to bring uniformity across all columns.  
-
-
-```{r date-separators}
 
 #Checking for all kinds of separators used inbetween mm-dd-yyyy
 unique(str_extract_all(unlist(date_columns), pattern = "[^0-9]")) #only /
 
-```
-
-
-
-#### b) Correct pattern of mm/dd/yyyy:  
-
-0 value in all columns suggests that dates in all rows follow same pattern of **2 digits/2 digits/4 digits**.   
-
-
-```{r date-pattern}
 
 #Check for the pattern- 2 digits/2 digits/4 digits in all dates column
 
@@ -203,76 +98,54 @@ dates_correct_format <- date_columns %>%
                 )))
 
 
-```
-
-```{r false-pattern-check}
-
 #checking number of false values in each date column--None
-false_date_formats <- colSums(!dates_correct_format, na.rm = T)
-knitr::kable(false_date_formats)
-```
+(false_date_formats <- colSums(!dates_correct_format, na.rm = T))
 
-
-#### c) Check range of first 2 digits:  
-
-
-```{r mm-range}
 #Check whether first 2 digits fall within range 1 to 12 indicating month
 unique(str_extract(unlist(date_columns), pattern = "^\\d+(?=/)"))
-```
-
-#### d) Check range of middle 2 digits:
-
-```{r dd-range}
 
 #checking range of middle 2 digits to be 1-31, indicating days
 unique(str_extract(unlist(date_columns), pattern = "(?<=/)\\d+(?=/)"))
 
-```
+##Another long-method of checking the same as above, but column-wise.
+#checking whether 'day' column contains values between 1 and 31 or not
+day_values <- date_columns %>% 
+  mutate(across(everything(),
+                ~str_extract(.,
+                             pattern = "(?<=/)\\d{2}(?=/)")))
 
-#### e) Check last 4 digits to be valid years or not
+#convert all day values to numeric
+day_values <- day_values %>% 
+  mutate(across(everything(),
+                ~as.integer(.)))
 
-```{r years-values}
+#checking min/max values in dates. They should fall between 01 to 31
+#ALL GOOD
+day_range <- day_values %>% 
+  summarise(across(everything(),
+                   list(
+                     min_value = ~min(., na.rm = T),
+                     max_value = ~max(., na.rm = T)
+                   ))
+  ) %>% 
+  pivot_longer(everything(),
+               names_to = "stat",
+               values_to = "value")
 
 #check whether last 4 digits are valid years or not--ALL GOOD
 unique(str_extract(unlist(date_columns), pattern = "(?<=/)\\d+$"))
-```
-
-#### f) Convert all date columns in main df to date-type
-
-```{r convert-to-date}
 
 #Convert all date columns in sf_data to date data type
 sf_data <- sf_data %>% 
   mutate(across(contains("date"), mdy))
 
-```
+##------------------COLUMNS WITH TYPE-DEFINITION PAIR.---------------------
 
-### 6. **Columns with numeric-definition pair.**
-
-There are 6 such columns where one column is numeric representation & the other, a definition of a building feature.  
-For e.g. `Permit Type` & `Permit Type Definition`, ***permit type number 1 implies new construction***. 
-
-- **Objective:** Convert such definition columns to factors with similar levels as indicated by their numeric counterpart.  
-
-For e.g. in **`Permit Type-Definition`** columns, **'new construction'** should get level 1, **'new construction wood frame'** should get level 2 and so on...
-
-
-```{r num-def-pair}
-
+#Objective- convert definition column values to factors.
 #3 pairs of columns. 
 definition_cols <- sf_data %>% select(contains('type'))
 
-```
-
-Each column pair has been handled individually.  
-- First, all distinct categories are viewed,  
-- Then, in the subset, definition column are arranged according to numeric counterpart and converted to factors.  
-- Using levels from the subset, the same column in main dataframe `sf_data` is converted to factor.  
-
-#### a) Permit Type & Permit Type Definition  
-
-```{r permit-cols}
+#check for unique values in each definition column
 
 ##PERMIT TYPE & DEFINITION
 permit <- definition_cols %>% 
@@ -280,11 +153,6 @@ permit <- definition_cols %>%
             drop_na() %>% 
             distinct() %>% 
             arrange(permit_type)
-
-permit
-```
-
-```{r factor-permits}
 
 #convert definition column to factor in the same order as permit type number.
 permit$permit_type_definition <- factor(
@@ -297,23 +165,13 @@ sf_data$permit_type_definition <- factor(
                         sf_data$permit_type_definition,
                         levels = permit$permit_type_definition
 )
-```
 
-#### b) Existing Construction Type & Description
-
-
-```{r existing-cons}
 ##EXISTING CONSTRUCTION TYPE & DESCRIPTION
 existing_construction <- definition_cols %>% 
                           dplyr::select(contains('exist')) %>% 
                           tidyr::drop_na() %>%  
                           dplyr::distinct() %>% 
                           dplyr::arrange(existing_construction_type)
-
-existing_construction
-```
-
-```{r factor-exist-cons}
 
 #convert the description column to factor
 existing_construction$existing_construction_type_description <- 
@@ -324,11 +182,6 @@ existing_construction$existing_construction_type_description <-
 sf_data$existing_construction_type_description <- 
   factor(sf_data$existing_construction_type_description,
          levels = existing_construction$existing_construction_type_description)
-```
-
-#### c) Proposed Construction Type and Description
-
-```{r proposed-cons}
 
 ##PROPOSED CONSTRUCTION TYPE & DESCRIPTION
 proposed_construction <- definition_cols %>% 
@@ -336,9 +189,6 @@ proposed_construction <- definition_cols %>%
                           tidyr::drop_na() %>% 
                           dplyr::distinct() %>% 
                           dplyr::arrange(proposed_construction_type)
-```
-
-```{r factor-proposed-cons}
 
 #convert the description column to factor
 proposed_construction$proposed_construction_type_description <- 
@@ -349,31 +199,12 @@ proposed_construction$proposed_construction_type_description <-
 sf_data$proposed_construction_type_description <- 
   factor(sf_data$proposed_construction_type_description,
          levels = proposed_construction$proposed_construction_type_description)
-```
 
-### 7. **Alphanumeric Columns check**
+##-----------------------CHECKS FOR ALPHANUMERIC COLUMNS--------------
 
-There are 3 columns- permit number, block and lot which can be numeric but are in 'char' type.  
-
-Below these columns are checked to ensure whether they are 'char' due to their original values being alphanumeric or due to presence of special characters.  
-
-```{r subset-alphanum-cols}
-
-#create subset
 #checking cols which can be numeric but have 'char' datatype
 alphanum_cols <- sf_data %>% 
                   select(permit_number,block,lot)
-```
-
-```{r special-chars-check}
-
-#checking for any other special characters in the columns
-#pattern excludes digits and upper/lower alphabets-----> none found
-unique(str_extract_all(unlist(alphanum_cols), 
-                       pattern = "[^0-9a-zA-Z]"))
-```
-
-```{r alphanum-checks}
 
 #checking whether each of these have only digits or alpha-numeric values
 #check if characters apart from digits present or not.
@@ -387,78 +218,48 @@ alphanum_cols_checks <- alphanum_cols %>%
 
 #checking number of alphanumeric values in each column
 colSums(alphanum_cols_checks, na.rm = T)
-```
 
-### 8. **Location Column**
+#checking for any other special characters in the columns
+#pattern excludes digits and upper/lower alphabets-----> none found
+unique(str_extract_all(unlist(alphanum_cols), 
+                       pattern = "[^0-9a-zA-Z]"))
 
-This column is of type character with a format like **"(-120.897, 40)"**.  
-- Special characters like **'(', ')', white spaces** will be removed.  
-- Column will be split into longitude, latitude.  
-- Both columns will be converted to float type.  
-
-```{r loc-unique-chars}
+###-------------------LOCATION COLUMN---------------
 
 #check for all characters in the column except digits.
 #Only separators like decimal point, comma, hyphen for negative grids, spaces.
 unique(str_extract_all(sf_data$location, 
                        pattern = "[^0-9]"))
-```
-
-```{r remove-chars}
 
 #remove paranthesis and white spaces from all values
 sf_data$location <- stringr::str_replace_all(sf_data$location,
                                              pattern = "[(|)\\s+]",
                                              replacement = "")
-```
-
-```{r split-location}
 
 #split the column into longitude and latitude
 sf_data <- sf_data %>% 
             tidyr::separate_wider_delim(cols = "location",
                                         delim = ",",
                                         names = c("longitude", "latitude"))
-```
 
-Below, number of missing values in latitude, longitude is checked. After conversion to float, if number of missing values remains same, it implies that no data was lost (got converted to NA) due to data-conversion from char to float.  
-
-
-```{r check-na1}
 #checking for total missing values before conversion to float type
 #1700 NA values in each
 rbind(colSums(is.na(subset(sf_data, select = c(latitude, longitude)))))
-```
 
-```{r convert-float}
 
 #convert both columns to double type
 sf_data <- sf_data %>% 
   mutate(latitude = as.numeric(latitude),
          longitude = as.numeric(longitude))
-```
 
-Checking total number of missing values again: 
+###----------------------------ZIPCODES----------------------------
 
-```{r check-na2}
-#check NA again
-rbind(colSums(is.na(subset(sf_data, select = c(latitude, longitude)))))
-```
-
-### 9. **Zipcodes**
-
-San Fransisco's zipcode lies between 94,102 to 94, 188. Below, the range is checked to ensure all zipcodes in our data lie within this range. 
-
-
-```{r zipcode-range-check}
-
+#San Fransisco's zipcode lies between 94,102 to 94, 188. 
 #Check for presence of Zipcodes beyond San Fransisco
+
 summary(sf_data$zipcode) #max is 94,158
-```
 
-### 10. **Current Status Column**
-
-```{r current-status1}
+###--------------CURRENT STATUS COLUMN-------------------------------
 
 #total missing values in this column--None
 missing_data_summary %>% filter(column_name == "current_status")
@@ -466,36 +267,35 @@ missing_data_summary %>% filter(column_name == "current_status")
 #check for any non-alphabetic characters withing the values--NONE
 any(str_detect(sf_data$current_status,
                pattern = "[^a-zA-Z]"))
-```
-
-```{r current-status2}
 
 #unique values
 unique(sf_data$current_status) #14 unique terms
-
-```
-
-```{r current-status3}
 
 #convert Current status to factors
 #levels given in alphabetic order.
 sf_data$current_status <- factor(sf_data$current_status)
 
-```
-
-### 11. **Cost Columns**
-
-```{r cost-columns1}
-
-#create susbet for cost
+#----------------COST COLUMNS------------------
 cost_data <- sf_data %>% 
               select(contains('cost'))
 
 #basic stats about cost
 summary(cost_data)
-```
 
-```{r low-estimated-cost}
+#checking rows where revised cost is 0
+nill_revised_cost <- sf_data %>% 
+                       filter(revised_cost == 0) %>% 
+                       select(permit_number, 
+                              permit_type_definition,
+                              first_construction_document_date,
+                              current_status,
+                              existing_use,
+                              estimated_cost,
+                              description
+                              )
+
+#checking permit type in such observations--- Alterations. 
+unique(nill_revised_cost$permit_type_definition)
 
 #checking rows where estimated cost is below $10
 estimated_cost_10 <- sf_data %>% 
@@ -509,6 +309,17 @@ estimated_cost_10 <- sf_data %>%
                              description
                       )
 
-#view a random sample
-dplyr::slice_sample(estimated_cost_10, n = 10)
-```
+##--------------NEIGHBOURHOOD------------------------------
+
+#quick view
+glimpse(sf_data$neighborhoods_analysis_boundaries) #names
+
+#total unique neighbours
+length(unique(sf_data$neighborhoods_analysis_boundaries)) #42 unique values
+
+#total number of observations for each unique neighborhood
+neighbourhood_unique <- sf_data %>% 
+  filter(!is.na(neighborhoods_analysis_boundaries)) %>% 
+  count(neighborhoods_analysis_boundaries,
+        name = "total") %>% 
+  arrange(-total)
