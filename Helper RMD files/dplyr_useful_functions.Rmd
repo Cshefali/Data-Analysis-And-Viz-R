@@ -1,0 +1,38 @@
+---
+title: "Useful functions of dplyr package"
+author: "Shefali C."
+date: "2023-07-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Explanation for commonly used dplyr-functions.
+
+### 1. CREATING RANDOM SAMPLES
+
+```{r load-library, message=FALSE, warning=FALSE}
+library(dplyr)
+```
+
+```{r data-prep1}
+#data prep
+df1 <- data.frame(x1 = c(1,4,5,2,7,9),
+                  x2 = c("r", "t", "l", "c", "m", "p"))
+```
+
+```{r sample-n}
+#a) Create a random sample with n values.
+#double paranthesis implies-->execute then display
+(sample1 <- sample_n(df1, 3))
+```
+
+```{r sample-frac}
+#b) Create a random sample with n fraction of rows, here 40% of rows 
+(sample2 <- sample_frac(df1, 0.40))
+```
+
+
+
