@@ -1,0 +1,645 @@
+---
+title: "AirBnB Data Cleaning"
+author: "Shefali C."
+date: "2024-06-21"
+output: 
+  rmdformats::readthedown:
+    toc_depth: 5
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## **Introduction**
+
+The dataset has been taken from [here](https://www.kaggle.com/datasets/arianazmoudeh/airbnbopendata) on Kaggle.  
+It contains 102,599 rows and 26 variables about AirBNBs in New York. 
+
+***
+
+The variables include:  
+  - AirBNB name, host name,  
+  - location details like coordinates, neighborhood etc.  
+  - whether hosts' identity is verified or not  
+  - details of rooms like availability, type of room,  
+  - price per night, service fees etc.  
+  - Reviews per month, last review date, review ratings,  
+  - and house rules.  
+  
+This notebook contains steps taken to clean this dataset.  
+The analysis part of this dataset is covered in another notebook.
+
+
+```{r load-library, warning=FALSE, message=FALSE}
+
+#load libraries
+library(tidyverse)
+library(janitor)
+library(tm)
+library(knitr)
+library(kableExtra)
+library(formattable)
+
+```
+  
+
+
+```{r set-directories}
+
+#working directory
+working_dir <- getwd()
+#data directory
+data_dir <- paste0(working_dir, "/data/")
+#output directory
+op_dir <- paste0(working_dir, "/output/")
+
+```
+
+## **Summary of cleaning steps**  
+
+1. **Duplicates: **541 duplicate rows found and removed.  
+2. **Missing Values: ** License column had only 2 values and rest all rows were blank. This column was removed.  
+3. **Clean column-names: **All white-spaces, symbols were removed from column names. All names converted to lowercase and whitespaces replaced with underscore.  
+4. **Price columns: ** symbols **"$,"** removed and columns converted to numeric.  
+5. **Date column: ** `last_review` column contains dates, pattern was checked and then column converted from char to date-type.  
+6. **Categorical columns: ** 3 columns have categorical values; they were checked and converted to factors.  
+7. **Clean long texts: ** **`house_rules`** column contains long text form data. All HTML tags, non-readable symbols etc. will be removed.  
+
+
+## **Notes on reading the dataset**  
+
+### ***Why `col_types` argument has been used in `read_csv()`??***  
+
+The **`col_character()`** in **`read_csv()`** is used to set the data-type of `license` column to char-type when read by the function.  
+    - When not used, the column was being read as logical.  
+    - **`read_csv()`** by default, takes first 1000 rows of dataset and tries detecting the d-type of each column.  
+    - In the case of `license`, all rows are blank except 2, which is why this col gets read as logical and a warning is thrown as shown in cell below.  
+    - The two license values get converted to `NA` in the process.  
+    - In order to avoid such data loss, it is a good practice to explicitly specify the dtype when such warnings occur.  
+
+
+
+
+```{r read-data}
+
+data2 <- readr::read_csv(paste0(data_dir, "Airbnb_Open_Data.csv"),
+                        col_types = cols(license = col_character()))
+
+```
+
+
+```{r eval=FALSE}
+
+#check warning message
+problems(data)
+
+#1 11116    26 1/0/T/F/TRUE/FALSE (expected); 41662/AL (actal value)
+#2 72949    26 1/0/T/F/TRUE/FALSE (expected); 41662/AL (actal value)
+
+
+```
+
+
+```{r}
+#check dtype of all cols; now license is 'char' and the 2 license values are not lost
+glimpse(data2)
+```
+
+## **Each cleaning step in detail**
+
+### **1. Remove duplicate rows**
+
+There are 541 duplicate rows in the dataset.
+
+
+```{r detect-duplicates}
+
+#check for duplicate rows--541 rows
+sum(duplicated(data2))
+
+```
+
+Following code can be used to create a subset of all the duplicate rows.  
+
+
+```{r duplicates-df}
+
+#create a separate dataframe with only duplicate rows
+duplicate_rows <- data2[duplicated(data2),]
+
+```
+
+Keep only unique values.  
+Two functions `distinct()` of **dplyr** package OR `unique()` of **baseR** can be used for the same.  
+- Using `distinct()` does not preserve the original order of rows in the dataframe.  
+
+
+```{r remove-duplicates}
+
+#remove duplicate rows
+data2 <- data2 %>% unique()
+
+```
+
+### **2. Check missing values**
+
+Following code creates a dataframe with 3 columns:  
+  - one contains names of columns in original dataframe,  
+  - second column contains total number of NA values in that column,  
+  - third column contains percentage of blank rows in each column.
+
+```{r na-count-per-column}
+
+##find missing values in each column
+missing_values <- data2 %>% 
+                    summarise(across(everything(), ~ sum(is.na(.)))) %>% 
+                    pivot_longer(everything(),
+                                 names_to = "column_name",
+                                 values_to = "total_NA") %>% 
+                    #add a column indicating % of NA rows
+                    mutate(percent_blank_rows = (total_NA/nrow(data2))*100) %>% 
+                    #add a "%" sign after rounding off
+                    mutate(percent_blank_rows = round(percent_blank_rows,2))
+```
+
+Here are all the columns and total missing values they contain.
+
+```{r display-na-count}
+
+#view the missing count dataframe
+knitr::kable(missing_values) %>%
+        kable_styling(bootstrap_options = "condensed",
+                      #full_width = F,
+                      position = "center",
+                      font_size = 11)
+
+```
+
+### **3. Clean column-names**
+
+- Remove `license` column.  
+- Remove spaces, hyphens, reduce to lowercase etc.  
+- **`clean_names()`** of **janitor** package handles all these manipulations.
+
+
+```{r clean-cols}
+#License col can be removed as it has values in only 2 rows out of 102,600.
+data2 <- data2 %>% select(-license)
+
+##Clean column names
+data2 <- janitor::clean_names(data2)
+```
+
+### **4. Convert columns with price/rates to numeric**  
+
+- Right now, the data-type of price columns (**`price`** & **`service_fee`**) is character.  
+- Values in these columns are of format- "\$100", "\$1,200".  
+- The dollar sign and comma get removed.  
+- Column is converted to numeric.  
+
+#### **4.1 Column- `price`**  
+
+##### i) Check all unique symbols present in the column.  
+
+- Only 2 found- '$' and ','.  
+- **`gsub()`** below replaces all digits **"\\d+"** with **""**.  
+- After replacement, price only contains values in form- ***"\$,"*** or ***"\$"***.  
+- Now, from this column, only unique values are extracted which only includes dollar-sign and comma symbols here.  
+
+
+
+```{r unique-chars-in-price}
+##1. column- 'price'; currently in char-type
+
+#check for all characters in it except digits
+## prices are either like '$100' or '$1,500'
+unique(gsub(pattern = "\\d+", replacement = "", data2$price))
+
+```
+
+##### ii) Remove the '$,' symbols leaving only digits behind.
+
+
+```{r remove-chars}
+
+#remove '$' and ',' symbols with ""
+data2$price <- str_replace_all(data2$price, pattern = "[$,]",
+                               replacement = "")
+
+```
+
+##### iii) Convert price column to numeric.
+
+```{r price-to-num}
+#convert price to numeric
+data2$price <- as.numeric(data2$price)
+
+```
+
+#### **4.2 Column- `service_fee`**  
+
+##### i) Check for unique symbols
+
+Only '$' present.  
+
+```{r unique-chars-service-fee}
+
+## Column- 'Service Fee'; currently in char
+
+#check for all unique characters-- prices only have '$' symbol
+unique(gsub(pattern = "\\d+", replacement = "", data2$service_fee))
+
+```
+
+##### ii) Remove the dollar sign and convert to numeric
+
+```{r clean-service-fee}
+
+#replace '$' with ""
+data2$service_fee <- gsub(pattern = '\\$', replacement = "",
+                          data2$service_fee)
+#convert to numeric
+data2$service_fee <- as.numeric(data2$service_fee)
+
+```
+
+### **5. Clean column with date values & convert to date-type**  
+
+- Column to work on: **`last_review`**
+- This column contains date of last review written for the given AirBNB.  
+- It contains dates but data-type is char.  
+- In order to convert it to date-type, it is crucial to know whether dates are in ***dd/mm/yyyy*** format so that `dmy()` function will be used OR in ***mm/dd/yyyy*** format so that `mdy()` function gets used.  
+- This pattern check has been performed in few steps below.
+
+
+#### **5.1 Check the overall pattern of digits.  **
+
+- The pattern below checks whether any date does not contain digits in format- **1-2 digits/1-2 digits/4-digits**.
+
+- **`all()`** returns false if even a single value fails to match this pattern.  
+
+- **"\\d{1,2}"** means minimum digits before '/' should be 1 and maximum 2. There are dates in format- 6/12/2015 or 1/4/2020 etc.  
+
+- Following code returns FALSE, indicating there are some values which do not match this pattern.  
+
+
+
+```{r last-review}
+
+#check the format of digits- dd/dd/dddd--returns false
+all(grepl(pattern = "\\d{1,2}/\\d{1,2}/\\d{4}", data2$last_review))
+
+```
+
+Following code finds all rows where the above pattern (date-format) is present. 
+
+```{r}
+#find row indices where this pattern is present in last-review column
+correct_date_format_row_index <- grepl(pattern = "\\d{1,2}/\\d{1,2}/\\d{4}",
+                                        data2$last_review)
+
+```
+
+- Create a subset containing rows excluding the rows found above in **`correct_date_format_row_index`**.  
+- This `data_incorrect_dates` contains all rows where date-format was not detected.  
+- Now we check this subset to find values which failed to parse with the date-format regex above.  
+
+
+```{r}
+#filter out rows where this pattern isn't present
+data_incorrect_dates <- data2[!correct_date_format_row_index,
+                              c('id', 'name', 'last_review')]
+```
+
+- All the dates which failed to parse with the regex above might be NA values.  
+- Following code counts total number of non-NA values in last_review column.  
+- The result is 0, meaning all last-review rows are blank in this subset.  
+- So, all the dates which failed to match with pattern above are actually NA.  
+
+
+```{r}
+##check whether all last_reviews values are NA in data_incorrect_dates-- all are 0
+sum(!is.na(data_incorrect_dates$last_review))
+```
+
+#### **5.2 Check range of day/month components**
+
+**Here's a summary of the following few steps:  **
+
+1. Check whether the first 2 digits lie between 1 to 12. If yes, these 2 indicate month.  
+2. Check whether middle 2 digits range from 1 to 31. If yes, these 2 indicate day.  
+3. Check the last 4 digits for any wrong entry. For e.g. year values like "2058" need correction.  
+
+##### a) Check first two digits  
+
+The first two digits in date range from 1 to 12, hence clearly represent "month".  
+
+
+```{r extract-first-two-digits}
+
+##Now check range of numbers in each component of date.
+# If range(first 2 digits in all rows) is 1-12 => first 2 digits indicate month
+# If range(middle 2 digtis) is 1-31 => days.
+
+##Check first 2 digits
+# range is 1-12
+unique(str_extract(data2$last_review, pattern = "^\\d{1,2}(?=/)"))
+```
+
+##### b) Check middle two digits
+
+Range of the middle two digits is 1 to 31 indicating day-component.
+
+
+```{r extract-mid-digits}
+
+#extract middle 2 digits
+#range 1-31
+summary(unique(as.integer(str_extract(data2$last_review, pattern = "(?<=^\\d{1,2}/)\\d{1,2}"))))
+
+```
+
+#### **5.3 Convert column to `date` type**
+
+Right now, date column is of character-type.  
+Using the cleaning steps above, it is confirmed that all dates are of format ***mm/dd/yyyy***.  
+Now, this column can be converted to `date` type using **`mdy()`** function of lubridate package. 
+
+
+```{r convert-to-date}
+
+#So, 'last_review' column is in format- mm/dd/yyyy
+
+#conver this column to date
+data2$last_review <- lubridate::mdy(data2$last_review)
+
+```
+
+#### **5.4 Check the range of dates in `last_review` column**
+
+
+```{r dates-range}
+
+#check range of dates
+summary(data2$last_review) ##- max value is "2058" which seems odd
+```
+
+- This dataset was last updated in 2022.  
+- The subset below contains all rows where last_review column contains dates beyond 2022.  
+- This might be due to data-entry error.
+
+```{r invalid-years}
+
+(invalid_year_rows <- data2 %>% 
+                      filter(year(last_review) > 2022) %>% 
+                      select(id, name, last_review))
+
+```
+
+##### a) Correct dates with year > 2022.
+
+For dates where year component is greater than 2022, replace only the year component with 2022.  
+
+In the code below:  
+- **`year<-(last_review,2022)`: ** is replacement function.  
+- It changes ONLY the year component to 2022 **inplace**, without creating a new object. 
+
+
+```{r replace-with-2022}
+
+#convert year values greater than 2022 to 2022
+data2 <- data2 %>% 
+          mutate(last_review = case_when(
+            year(last_review) > 2022 ~ `year<-`(last_review, 2022),
+            TRUE ~ last_review
+          ))
+```
+
+***
+
+
+```{r}
+#make a copy of dataframe so far
+data3 <- data2
+```
+
+***
+
+### **6. Find unique values in all categorical columns**  
+
+
+#### **6.1 Categories in `host-identity-verified` column**  
+
+- Two categories found- ***unconfirmed, verified***.  
+
+
+```{r}
+#Column- Host-identity-verified (unique values check)
+#2 values- "unconfirmed", "verified"
+unique(data3$host_identity_verified)
+
+```
+
+Following is the proportion of verified & unconfirmed host-ids in the dataset. 
+
+
+```{r create-verification-tb}
+
+#find total percentage of verified/unconfirmed
+#Proportion of confirmed identity/ unconfirmed identity is almost same at ~50%
+verification_data <- data3 %>% group_by(host_identity_verified) %>% 
+  summarise(total = n()) %>% 
+  mutate(percent_share = round((total/nrow(data3)*100),2)) %>% 
+  arrange(-percent_share) %>% 
+  rename(`Verification Status` = host_identity_verified,
+         `Total data points` = total,
+         `% in dataset` = percent_share
+         )
+
+```
+
+```{r formatted-verification-tb}
+
+formattable(verification_data,
+            align = c('l', 'c', 'c'),
+            list(
+              `Verification Status` = formatter("span",
+                                                   style = ~ style(color = "black", font.weight = "bold")
+                                                   ),#formatter
+              `Total data points` = color_tile('#FFD1DC', '#FFB6C1'),
+              `% in dataset` = color_tile('#FFD1DC', '#FFB6C1')
+                 )#list
+            ) #formattable
+  
+
+```
+
+In the main dataframe data3, convert the **`host_identity_verified`** column to factor with 2 categories.
+
+```{r}
+data3$host_identity_verified <- factor(data3$host_identity_verified,
+                                    exclude = NA)
+```
+
+
+
+
+#### **6.2 Categories in `cancellation-policy` column** 
+
+There are 3 categories in cancellation policy- ***strict, moderate & flexible.***  
+Each of this categories have roughtly 33% data-share.
+
+
+```{r}
+#Column- Cancellation policy
+#3 categories: strict, moderate, flexible
+unique(data3$cancellation_policy)
+
+```
+
+```{r}
+#check for proportion for each
+#roughly same for all 3, ~33%
+cancel_policy <- data3 %>% group_by(cancellation_policy) %>% 
+  summarise(total = n()) %>% 
+  mutate(percent_share = round((total/nrow(data3))*100,2)) %>% 
+  arrange(-percent_share) %>% 
+  rename(`Cancellation Policy` = cancellation_policy,
+         `Total data points` = total,
+         `% in dataset` = percent_share
+         )
+
+```
+
+```{r}
+
+formattable(cancel_policy,
+            align = c('l', 'c', 'c'),
+            list(
+              `Cancellation Policy` = formatter("span",
+                                                   style = ~ style(color = "black", font.weight = "bold")
+                                                   ),#formatter
+              `Total data points` = color_tile('#FFD1DC', '#FFB6C1'),
+              `% in dataset` = color_tile('#FFD1DC', '#FFB6C1')
+                 )#list
+            ) #formattable
+
+```
+
+In the main dataframe data3, convert the **`cancellation_policy`** column to factor with 3 categories.
+
+```{r}
+data3$cancellation_policy <- factor(data3$cancellation_policy,
+                                    exclude = NA)
+```
+
+
+
+#### **6.3 Categories in `room_type` column** 
+
+4 types of rooms available in all the AirBnBs: ***"Private room", "Entire home/apt", "Shared room", "Hotel room"***  
+
+
+```{r}
+#Column- Room type
+#4 cats- "Private room", "Entire home/apt", "Shared room", "Hotel room"
+unique(data3$room_type)
+
+```
+
+```{r}
+#Most listings are either Entire home/apt OR private room
+type_of_room <- data3 %>% group_by(room_type) %>% 
+  summarize(total = n()) %>% 
+  mutate(percent_share = round((total/nrow(data3))*100,2)) %>% 
+  arrange(-percent_share) %>% 
+  rename(`Type of Room` = room_type,
+         `Total Rows` = total,
+         `% in dataset` = percent_share
+         )
+
+```
+
+```{r}
+formattable(type_of_room,
+            align = c('l', 'c', 'c'),
+            list(
+              `Type of Room` = formatter("span",
+                                                   style = ~ style(color = "black", font.weight = "bold")
+                                                   ),#formatter
+              `Total Rows` = color_tile('#FFD1DC', '#FFB6C1'),
+              `% in dataset` = color_tile('#FFD1DC', '#FFB6C1')
+                 )#list
+            ) #formattable
+```
+
+In the main dataframe data3, convert this **`room_type`** column to factor with 4 categories. 
+
+
+```{r}
+#convert to factor
+data3$room_type <- factor(data3$room_type, exclude = NA)
+```
+
+### **7. Clean `house_rules` column**  
+
+a) First, we check for presence of HTML tags; remove them if present.  
+b) Then, we remove unnecessary symbols which will not contribute to understanding most common house rules.  
+
+#### 7.1 HTML tags  
+
+No HTML tags found.
+
+
+```{r}
+#check for presence of HTML tags.
+any(grepl(pattern = "<.*?>", data3$house_rules))
+```
+
+#### 7.2 Remove "#NAME?" from texts
+
+```{r}
+
+#some rows contain this value in house-rules column
+data3$house_rules <- gsub(pattern = "#NAME?", replacement = "", data3$house_rules)
+#some rows contain '?' in house-rules column
+data3$house_rules <- gsub(pattern = "^\\?$", replacement = "", data3$house_rules)
+
+```
+
+If there are rows where house-rule only contains "#NAME?", it was replaced with empty string ("") by the line above.  
+Now, such cells which only contain empty string get converted to NA.  
+
+
+```{r}
+#replace empty string with NA in house-rules column
+data3$house_rules <- gsub(pattern = "^$", replacement = NA, data3$house_rules)
+```
+
+#### 7.3 Remove bulletin symbols (-, : , * etc.)  
+
+Many sentences in house-rule column have symbols used to add bulletin points.  
+This step removes all such symbols.  
+
+```{r}
+
+#remove bulletin symbols like "•" from house_rules
+data3$house_rules <- stringr::str_remove_all(data3$house_rules, 
+                                         pattern = "[•-]")
+#remove numeric bulletin symbols like 1. abc, 2. xyz, ...
+data3$house_rules <- stringr::str_remove_all(data3$house_rules,
+                                             pattern = "\\d{1}\\.(?=\\s)")
+
+```
+
+#### 7.4 Remove extra whitespaces  
+
+All leading, trailing and extra whitespaces in-between words get removed.  
+
+```{r}
+data3$house_rules <- trimws(data3$house_rules)
+```
+
+
+
