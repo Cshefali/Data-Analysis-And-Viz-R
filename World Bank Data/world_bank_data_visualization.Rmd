@@ -1,0 +1,659 @@
+---
+title: "World Bank Data Visualization"
+author: "Shefali C."
+date: "2023-08-16"
+output: 
+        html_document:
+          toc: true
+          toc_depth: 5
+          theme: united
+          highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	fig.align = "center",
+	fig.height = 4,
+	fig.width = 6,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+This notebook contains visualizations of a few World Bank indicators for the top 6 economies of the world. It also contains a few plots for the Global emission data ($CO_2$ & Greenhouse Gases).  
+
+
+
+```{r load-libraries, warning=F, message=FALSE}
+
+library(tidyverse)
+library(ggthemes)
+library(lubridate)
+library(plotly)
+library(patchwork)
+library(gghighlight)
+
+```  
+
+```{r read-csv, warning=F, message=F}
+
+#read csv file
+all_data <- read_csv(paste0(getwd(),"/data/world_bank_data/world_bank_development_indicators.csv"))
+```
+
+### Data Wrangling  
+
+#### 1. Select relevant columns  
+
+
+```{r subset-dataset, warning=F, message=F}
+
+#selecting only relevant columns
+all_data <- all_data %>%
+                select(country, date, population, population_density, GDP_current_US,
+                       `forest_land%`,
+                        `renewvable_energy_consumption%`,
+                         CO2_emisions,
+                         other_greenhouse_emisions,
+                        `research_and_development_expenditure%`,
+                        `military_expenditure%`,
+                        `government_expenditure_on_education%`,
+                        `government_health_expenditure%`
+                      )
+
+```  
+
+#### 2. Extract year from `date` column
+
+
+```{r add-column, message=F, warning=F}
+#add year column
+all_data$year <- as.integer(lubridate::year(all_data$date))
+#summary of year column
+summary(all_data$year)
+
+```  
+
+##### A minor glimpse at the dataframe so far...
+
+```{r data-view2, message=F, warning=F}
+glimpse(all_data)
+```  
+
+#### 3. Rename some columns
+
+```{r rename-columns, warning=F, message=F}
+
+#rename column names
+all_data <- all_data %>%
+                rename(#inflation_perc = "inflation_annual%",
+                      #agri_land_perc = "agricultural_land%",
+                      forest_land_perc = "forest_land%",
+                      renewable_energy_consump_perc = "renewvable_energy_consumption%",
+                      r_and_d_exp_perc = "research_and_development_expenditure%",
+                      military_exp_perc = "military_expenditure%",
+                      education_exp_perc = "government_expenditure_on_education%",
+                      health_exp_perc = "government_health_expenditure%")
+```    
+
+#### 4. Extract aggregate data for World.  
+
+The country column not only contains names of countries, but also names of continents, regions like "Western Africa", "Sub-Saharan region", "conflict states", "OECD" etc.  
+
+All those rows are extracted which contain "World" as country.
+
+
+```{r subset-world-data, warning=F, message=FALSE}
+
+##world data
+world_data <- all_data[grep(pattern = "world", all_data$country, ignore.case = T),]
+#remove "Arab world" from this data
+world_data <- world_data[-grep(pattern = "Arab", world_data$country, ignore.case = T),]
+
+```  
+
+#### 5. Extract all legit countries from this dataframe.  
+
+I've created a list of keywords found in the **`country`** column. All rows with these keywords will be removed, leaving behind proper country names.  
+
+
+```{r subset-country-data, warning=F, message=F}
+
+#filter out country names from the dataset
+
+#some recurring keywords found in country column
+#these will be used to remove containing such patterns
+keywords <- "Eastern|Southern|Western|Central|World|Island|Euro|dividend|Asia|income|
+                Fragile and conflict affected situations|IDA|countries|IBRD|Latin|Middle East|
+                Not classified|OECD members|small states|Sahara"
+
+#country dataframe with only contain legit country names
+country_data <- all_data[-grep(pattern = keywords, all_data$country, 
+                                 ignore.case = T),]
+
+#remove rows with following names in country columns
+country_data <- country_data %>%
+                    filter(!country %in% c("Fragile and conflict affected situations",
+                                        "North America",
+                                        "Not classified"))
+```
+
+#### 6. Shorten names of following countries.  
+
+The names have been abbreviated to make cleaner labels for X-axis.  
+
+
+```{r rename-country, warning=F, message=F}
+#shorten some country names for cleaner X-axis labels
+country_data[country_data$country == "United States",'country'] <- "USA"
+country_data[country_data$country == "United Kingdom",'country'] <- "UK"
+
+```
+
+#### 7. Replace NA with suitable value.  
+
+The R&D expenditure (as % of GDP) is missing for India for the year 2019. I've replaced this NA with 0.7%. This estimate has been taken from the [Research and Development Statistics Report, 2019-2020](https://dst.gov.in/sites/default/files/Research%20and%20Deveopment%20Statistics%202019-20_0.pdf).
+
+```{r replace-NA, warning=F,message=FALSE}
+
+country_data[country_data$country == "India" & country_data$year == 2019, 'r_and_d_exp_perc'] <- 0.7
+
+```  
+
+#### 8. Extract top 6 economies in the world by GDP (2019)
+
+2019 has been taken as reference year because most countries have no data for years 2020, 2021 and 2022.  
+
+Graphs with different World Bank indicators will be created for these 6 countries.  
+
+
+```{r top6-countries, warning=FALSE,message=FALSE}
+#top 10 countries with highest GDP in 2019
+top6_countries <- country_data %>%
+                    filter(year == 2019) %>%
+                    slice_max(n = 6, order_by = GDP_current_US) %>%
+                    select(country)
+#convert the country column to factors with ordered levels
+top6_countries <- factor(top6_countries$country, levels = top6_countries$country)
+```
+
+### Data Visualization
+
+I have used **`theme_economist_white()`** as the base theme for all plots. This theme is present in the `ggthemes` package. It resembles the graph format used by news articles on **The Economist**.  
+
+`common_theme` contains some layout components common to all plots in this notebook.  
+
+
+```{r common-plot-theme, warning=FALSE, message=FALSE}
+#common theme elements for all plots
+common_theme <- theme_economist_white(gray_bg = F)+
+                theme(
+                     #plot.title.position = "plot",
+                     plot.caption.position = "plot",
+                     plot.title = element_text(size = 12, hjust = 0.5)
+                     )
+```  
+
+#### 1. What share of GDP accounts for Military & Research-Development expenditure in the top 6 economies of the world (2019)?  
+
+
+```{r military-barplot}
+
+military_barplot <- country_data %>% 
+                        filter(country %in% top6_countries, year == 2019) %>%
+                        mutate(country = factor(country, levels = top6_countries)) %>%
+                        select(country, date, military_exp_perc) %>%
+                        ggplot(aes(x = country, 
+                                   y = military_exp_perc))+
+                            geom_bar(stat = "identity", fill = "#006BA2")+
+                            geom_text(aes(label = paste0(round(military_exp_perc,2),"%")), vjust = -0.5,
+                                     size = 2, fontface = "bold")+
+                            labs(x = "countries in decreasing order of GDP (2019)", 
+                                 y = "expenditure as % of GDP",
+                                 title = "Military")+
+                            scale_y_continuous(expand = c(0,0), breaks = seq(0,4,0.5), labels = seq(0,4,0.5))+
+                            coord_cartesian(clip = "off")+
+                            common_theme+
+                            theme(
+                                #create a gap between title and main plot
+                                plot.title = element_text(margin = margin(t=0, l = 0, b = 25), size = 9),
+                                #remove ticks from x axis
+                                axis.ticks.x = element_blank(),
+                                #reduce space between country names and x-axis line
+                                axis.text.x = element_text(margin = margin(t=1,b=7), size = 6, face = "bold"),
+                                axis.text.y = element_text(size = 6, face = "bold", margin = margin(r=2)),
+                                #increase space between y-axis title and text
+                                axis.title.y = element_text(margin = margin(r=10), size = 7),
+                                axis.title.x = element_text(size = 7)
+                                 )
+
+```  
+
+
+
+```{r rnd-barplot}
+
+research_barplot <- country_data %>% 
+                        filter(country %in% top6_countries, year == 2019) %>%
+                        mutate(country = factor(country, levels = top6_countries)) %>%
+                        select(country, date, r_and_d_exp_perc) %>%
+                        drop_na() %>%
+                        ggplot(aes(x = country, 
+                                   y = r_and_d_exp_perc))+
+                            geom_bar(stat = "identity", fill = "#006BA2")+
+                            geom_text(aes(label = paste0(round(r_and_d_exp_perc,2),"%")), vjust = -0.5,
+                                     size = 2, fontface = "bold")+
+                            labs(x = "countries in decreasing order of GDP (2019)", 
+                                 y = "expenditure as % of GDP",
+                                 title = "R&D")+
+                            scale_y_continuous(expand = c(0,0), breaks = seq(0,4,0.5), labels = seq(0,4,0.5))+
+                            coord_cartesian(clip = "off")+
+                            common_theme+
+                            theme(
+                                #create a gap between title and main plot
+                                plot.title = element_text(margin = margin(t=0, l = 0, b = 25), size = 9),
+                                #remove ticks from x axis
+                                axis.ticks.x = element_blank(),
+                                #reduce space between country names and x-axis line
+                                axis.text.x = element_text(margin = margin(t=1,b=7), size = 6, face = "bold"),
+                                axis.title.y = element_text(margin = margin(r=7), size = 7),
+                                axis.text.y = element_text(size = 6, face = "bold", margin = margin(r=2)),
+                                
+                                axis.title.x = element_text(size = 7)
+                                 )
+
+
+```  
+
+Following code uses the functionalities of **patchwork** package.  
+The **`plot_layout()`** function controls the features of entire plot.  
+For e.g., `width = c(8,8)` means width of both plots is 8 each.  
+
+
+
+```{r two-barplots}
+(military_barplot + research_barplot) +
+  plot_layout(nrow = 1, widths = c(8,8), heights = c(4,4))+
+  plot_annotation(title = "Military & Research expenditure (% of GDP) 2019",
+                  theme = theme(
+                    plot.title = element_text(size = 11, hjust = 0.5)
+                  ))
+```
+
+#### 2. Spendings on R & D between 2000 to 2019 for the top 6 countries  
+
+Following series of plots is an attempt to make the linechart interactive.  
+First is the linechart in its basic form, in subsequent steps, I have noted down some of my observations while playing around with the object returned by **`plotly_build()`** of **plotly** package. 
+
+```{r data-linechart}
+##data prep
+r_and_d_data <- country_data %>%
+                filter(country %in% top6_countries,
+                      year %in% seq(2000,2019,1)) %>%
+                select(country, date, r_and_d_exp_perc, year)
+
+#R&D value in 2019
+exp_2019 <- r_and_d_data %>% 
+                filter(year == 2019) %>%
+                mutate(r_and_d_exp_perc = round(r_and_d_exp_perc,2))
+```  
+
+##### The non-interactive linechart
+
+
+```{r research-lineplot}
+(research_lineplot <- r_and_d_data %>%
+                        ggplot(aes(x = year, y = r_and_d_exp_perc))+
+                        geom_line(aes(color = country), na.rm = T, linewidth = 1)+
+                        geom_point(data = exp_2019, aes(x = year, y = r_and_d_exp_perc, color = country), 
+                                   shape = 16, na.rm = T)+
+                        #label box for India
+                        annotate(geom = "label", x = 2002, y = 0.7, label = "India", color = "#7ad2f6", size = 2)+
+                        #label box for UK
+                        annotate(geom = "label", x = 2002, y = 1.7, label = "UK", color = "#76c0c1", size = 2)+
+                        #label box for China
+                        annotate(geom = "label", x = 2002, y = 1.2, label = "China", color = "#6794a7", size = 2)+
+                        #label box for Germany
+                        annotate(geom = "label", x = 2002, y = 2.3, label = "Germany", color = "#014d64", size = 2)+
+                        #label box for Japan
+                        annotate(geom = "label", x = 2002, y = 3.1, label = "Japan", color = "#01a2d9", size = 2)+
+                        #label box for USA
+                        annotate(geom = "label", x = 2002, y = 2.6, label = "USA", color = "#00887d", size = 2)+
+
+                        coord_cartesian(clip = "off")+
+                        scale_x_continuous(breaks = seq(2000,2019,2),
+                                          labels = seq(2000,2019,2))+
+                        scale_color_economist(guide = "none")+
+                        labs(x = "", y = "R&D expenditure as % of GDP",
+                            title = "Comparison of emphasis given to R&D by the 6 countries (2000-2019)",
+                            subtitle = "Data for year 2019 for India is unknown")+
+                        common_theme+
+                        theme(plot.title = element_text(size = 9),
+                        plot.subtitle = element_text(margin = margin(t=5, b = 25), size = 8),
+                        axis.title.y = element_text(margin = margin(r=7), size = 7),
+                        axis.text.x = element_text(size = 6, face = "bold"),
+                        axis.text.y = element_text(size = 6, face = "bold")
+                        )
+)
+    
+```
+
+##### Steps to make the linechart interactive  
+
+The label boxes for each country have been removed below to prevent cluttering in the final interactive plot. **`research_lineplot2`** is the same linechart as above except for the label boxes.  
+
+```{r research-lineplot2}
+research_lineplot2 <- r_and_d_data %>%
+                        ggplot(aes(x = year, y = r_and_d_exp_perc))+
+                        geom_line(aes(color = country), na.rm = T, linewidth = 1)+
+                        geom_point(data = exp_2019, aes(x = year, y = r_and_d_exp_perc, color = country), 
+                                   shape = 16, na.rm = T)+
+
+                        coord_cartesian(clip = "off")+
+                        scale_x_continuous(breaks = seq(2000,2019,2),
+                                          labels = seq(2000,2019,2))+
+                        scale_color_economist(guide = "none")+
+                        labs(x = "", y = "R&D expenditure as % of GDP",
+                            title = "Comparison of emphasis given to R&D by the 6 countries (2000-2019)",
+                            subtitle = "Data for year 2019 for India is unknown")+
+                        common_theme+
+                        theme(plot.title = element_text(size = 9),
+                        plot.subtitle = element_text(margin = margin(t=5, b = 25), size = 8),
+                        axis.title.y = element_text(margin = margin(r=7), size = 7),
+                        axis.text.x = element_text(size = 6, face = "bold"),
+                        axis.text.y = element_text(size = 6, face = "bold")
+                        )
+    
+```
+
+Applying **`plotly_build()`** renders the above graph interactive. But it adds a legend which was explicitly omitted in the code above!  
+
+
+```{r interactive-linechart, fig.align='center'}
+#convert the plot to interactive
+(research_lineplot_i <- plotly_build(research_lineplot2))
+
+```
+
+##### Remove the legend  
+
+In order to remove the legend, we need to get down to each component of the plotly object and set `showlegend` as false.  
+
+1. `research_lineplot_i` is a super-nested list internally. The plot above   contains a handful of geoms which can be customized using the `data[[i]]` part.  
+
+2. For e.g., `geom_line()` is the first geom used followed by `geom_point()`. So, data[[1]] to data[[6]] represent the line-component for each of the 6 countries. `data[[1]]$name` will return "China", `data[[2]]$name` will return Germany.  
+
+```{r plotly-line-object}
+research_lineplot_i$x$data[[1]]$name
+research_lineplot_i$x$data[[1]]$line
+```
+
+
+3. data[[7]] to data[[12]] represent the point-component of each country. So, the list of features present inside data[[7]] to data[[12]] correspond to point object. You may see some components below-  
+
+```{r plotly-point-object}
+
+research_lineplot_i$x$data[[7]]$name
+research_lineplot_i$x$data[[7]]$marker 
+
+```
+
+
+Similary, each of these objects data[[1]] to data[[12]] contain a component called `showlegend` which can be turned on or off depending on requirement.  
+Below, I've removed the legend created by `plotly_build()`.  
+
+
+```{r remove-legend}
+#remove the legend.
+for(i in 1:length(top6_countries)){
+    research_lineplot_i$x$data[[i]]$showlegend <- FALSE
+}
+research_lineplot_i
+```  
+
+##### Customizing tooltip of an interactive plot  
+
+Contuining with the explanation above, another component of `data[[i]]` objects is **text**. What it contains, gets reflected in the tooltip when you hover over the lines.   
+
+Here, I've made minor changes to the column names for better readability.  
+
+
+```{r customize-tooltip}
+#tooltip content modification
+for (i in 1:length(research_lineplot_i$x$data)) {
+  
+  year <- research_lineplot_i$x$data[[i]]$x
+  expend <- research_lineplot_i$x$data[[i]]$y
+  country <- research_lineplot_i$x$data[[i]]$name
+  
+  research_lineplot_i$x$data[[i]]$text <- str_glue(
+                                          "Year:  {year}",
+                                          "<br>",
+                                          "R&D expenditure:  {round(expend,2)}%",
+                                          "<br>",
+                                          "Country:  {country}"
+                                              )
+  
+}
+```  
+
+And the final plot now looks like...    
+Hover over the graph above and this one to see the difference in the tooltip.
+
+
+
+```{r final-linechart, fig.align='center'}
+
+research_lineplot_i
+
+```  
+
+I would suggest before trying out these features on Kaggle, it will be better to play around with them in RStudio. I learnt a lot while working on this part in RStudio. :)
+
+#### 3. Change in dependency on Renewable energy sources over the years.
+
+```{r energy-data}
+
+#data prep
+energy_data <- country_data %>%
+                filter(country %in% top6_countries, 
+                      year %in% c(2000, 2010, 2019)) %>%
+                select(country, year, renewable_energy_consump_perc)%>%
+                mutate(year = factor(as.integer(year), levels = c(2000, 2010, 2019))
+                      )%>%
+                rename(energy_consump = renewable_energy_consump_perc)
+
+
+```  
+
+```{r energy-plot}
+
+#plot
+(energy_barplot <- energy_data %>%
+                    ggplot(aes(x = country, y = energy_consump))+
+                    geom_bar(aes(fill = year), position = "dodge", stat = "identity", width = 0.7)+
+                    scale_fill_manual(values = c("2000" = "#B0E0E6", "2010" = "#3EBCD2", "2019" = "#006BA2"))+
+                    scale_y_continuous(limits = c(0,50), position = "right", expand = c(0,0))+
+                    labs(title = "Renewable energy consumption (% of total energy)",
+                       subtitle = "Change in green energy consumption over the decades (2000-2019)",
+                       caption = "Source: World Bank",
+                       x = "",
+                       y = "")+
+                    common_theme+
+                    theme(#plot.subtitle = element_text(margin = margin(0,0,5,0)),
+                        #legend.text = element_text(size = 5),
+                        legend.key.size = unit(.5, "cm"),
+                        legend.title = element_text(size = 9),
+                        legend.text = element_text(size = 8),
+                        legend.direction = "horizontal",
+                        axis.ticks.x = element_blank(),
+                        axis.text.x = element_text(size = 7, face = "bold",margin = margin(t=1)),
+                        axis.text.y = element_text(size = 7, face = "bold"),
+                        plot.subtitle = element_text(margin = margin(t=3,b=10), size = 8),
+                        plot.title = element_text(size = 9),
+                        plot.caption = element_text(hjust = 0, size = 7))
+)
+
+```  
+
+#### 4. Share of GDP across different sectors 
+
+```{r expenditure-data}
+
+#data prep
+expenditure_data_2019 <- country_data %>%
+                            filter(country %in% top6_countries, year == 2019) %>%
+                            select(country, date, year, contains(match = "exp_perc", ignore.case = T))
+
+#pivot the dataframe longer
+expenditure_data_2019_long <- expenditure_data_2019 %>%
+                                pivot_longer(cols = 4:7, 
+                                             names_to = "category",
+                                             values_to = "expenditure")
+
+```
+
+
+```{r expenditure-data-manipul}
+
+#round off GDP % to nearest hundreds
+expenditure_data_2019_long$expenditure <- round(expenditure_data_2019_long$expenditure,2)
+
+#add label column for better representation on X-axis
+expenditure_data_2019_long <- expenditure_data_2019_long %>%
+                                mutate(label = case_when(
+                                category == "r_and_d_exp_perc" ~ "Research &\nDevelopment",
+                                category == "military_exp_perc" ~ "Military",
+                                category == "education_exp_perc" ~ "Education",
+                                category == "health_exp_perc" ~ "Heathcare"))
+```
+
+```{r expenditure-barplot}
+
+#expenditure per country
+expenditure_data_2019_long %>%
+    ggplot(aes(x = country, y = expenditure))+
+    geom_bar(aes(fill = label), stat = "identity", width = 0.7)+
+    geom_text(aes(label = paste0(expenditure,"%"), group = label), 
+              position = position_stack(vjust = 0.5),
+             color = "white", size = 2, fontface = "bold")+
+    scale_fill_economist(name = "Sector")+
+    scale_y_continuous(limits = c(0, 25), position = "right", expand = c(0,0))+
+    labs(title = "GDP Distribution in different sectors (2019)",
+       caption = "Source: World Bank",
+       x = "",
+       y = "Share of GDP")+
+    common_theme+
+    theme(legend.position = "right",
+        legend.key.size = unit(.5, "cm"),
+        legend.title = element_text(size = 9),
+        legend.text = element_text(size = 8),
+        axis.text.x = element_text(size = 6, face = "bold", margin = margin(t=1)),
+        axis.text.y = element_text(size = 6, face = "bold"),
+        axis.title.y = element_text(size = 8, margin = margin(l=2)),
+        axis.ticks.x = element_blank(),
+         plot.caption = element_text(hjust = 0, size = 7),
+         plot.title = element_text(margin = margin(b = 20),size = 9)
+    )
+
+```
+
+#### 5. Rise in Carbon-dioxide emissions since 1990.  
+
+```{r climate-data}
+
+global_climate_data <- world_data %>%
+                        filter(year > 1990) %>%
+                        select(country, date, year, 
+                               contains(match = "emision", ignore.case = T)) %>%
+                        mutate(CO2_emisions = CO2_emisions/1e6,
+                              other_greenhouse_emisions = other_greenhouse_emisions/1e6) %>%
+                        drop_na()
+
+```
+
+In the plots below, I've added markers for Kyoto Protocol signed by countries all over the world in Dec 1997, followed by the 4th report by IPCC on Climate change urging the countries to build policy that control average earth temperature at 2$^\circ$C. Then we signed the Paris Agreement in December 2015 but the global emissions have kept on rising.  
+
+The decline after 2019 is because the world stood still during Coronavirus pandemic in 2020.  
+
+
+```{r co2-plot}
+
+(co2_plot <- global_climate_data %>%
+            {
+                ggplot(.,aes(x = year, y = CO2_emisions))+
+                geom_line(na.rm = TRUE, color = "#006BA2", linewidth = 1.5)+
+                geom_area(na.rm = TRUE, fill = "#7ad2f6", alpha = 0.4)+
+                #geom_hline(yintercept = 21.39, color = "#014d64", linetype = "dashed")+
+                #Kyoto Protocol 1997
+                geom_vline(xintercept = 1997, linetype = "dashed", color = "#014d64")+
+                annotate("label", x = 1997, y = 36.5, label = "Kyoto Protocol\nDec 1997", size = 3)+
+                #IPCC 4th Report 2007
+                geom_vline(xintercept = 2007, linetype = "dashed", color = "#014d64")+
+                annotate(geom = "label", x = 2007, y = 36.5, label = "IPCC 4th Report", size = 3)+
+                #Paris Agreement 2015
+                geom_vline(xintercept = 2015, linetype = "dashed", color = "#014d64")+
+                annotate(geom = "label", x = 2015, y = 36.5, label = "Paris Agreement\nDec 2015", size = 3)+
+                scale_x_continuous(breaks = seq(1991,2020,1), labels =  seq(1991,2020,1))+
+                scale_y_continuous(expand = c(0,0),
+                                  breaks = seq(0,40,5), labels = seq(0,40,5))+
+                labs(title = "Carbon dioxide emissions in kt (1991-2020)",
+                   #subtitle = "mass in kt(kiloton)",
+                   caption = "Source: World Bank",
+                   x = "",
+                   y = "mass in kt")+
+                coord_cartesian(clip = "off")+
+                common_theme+
+                theme(axis.ticks.length.x.bottom = unit(0.1, units = "cm"),
+                     axis.text.x = element_text(angle = 90, size = 6, margin = margin(t=1.5), face = "bold"),
+                     axis.text.y = element_text(size = 6, face = "bold"),
+                     axis.title.y = element_text(margin = margin(r=10), size = 7),
+                     panel.grid.major.y = element_line(linewidth = 0.3),
+                
+                     plot.caption = element_text(hjust = 0, size = 7),
+                     plot.title = element_text(margin = margin(b = 30), hjust = 0.5))
+            }
+)
+```  
+
+#### 6. Rise in Greenhouse gas emissions since 1990.
+
+
+```{r ghg-plot}
+(ghg_plot <- global_climate_data %>%
+            {
+                ggplot(.,aes(x = year, y = other_greenhouse_emisions))+
+                geom_line(na.rm = TRUE, color = "#006BA2", linewidth = 1.5)+
+                geom_area(na.rm = TRUE, fill = "#7ad2f6", alpha = 0.4)+
+                #geom_hline(yintercept = 21.39, color = "#014d64", linetype = "dashed")+
+                #Kyoto Protocol 1997
+                geom_vline(xintercept = 1997, linetype = "dashed", color = "#014d64")+
+                annotate("label", x = 1997, y = 51, label = "Kyoto Protocol\nDec 1997", size = 3)+
+                #IPCC 4th Report 2007
+                geom_vline(xintercept = 2007, linetype = "dashed", color = "#014d64")+
+                annotate(geom = "label", x = 2007, y = 51, label = "IPCC 4th Report", size = 3)+
+                #Paris Agreement 2015
+                geom_vline(xintercept = 2015, linetype = "dashed", color = "#014d64")+
+                annotate(geom = "label", x = 2015, y = 51, label = "Paris Agreement\nDec 2015", size = 3)+
+                scale_x_continuous(breaks = seq(1991,2020,1), labels =  seq(1991,2020,1))+
+                scale_y_continuous(expand = c(0,0),
+                                  breaks = seq(0,55,5), labels = seq(0,55,5))+
+                labs(title = "Greenhouse gas emission in kt (1991-2000)",
+                   
+                   caption = "Source: World Bank",
+                   x = "",
+                   y = "mass in kt(kiloton)")+
+                coord_cartesian(clip = "off")+
+                common_theme+
+                theme(axis.ticks.length.x.bottom = unit(0.1, units = "cm"),
+                     axis.text.x = element_text(angle = 90, size = 6, face = "bold", margin = margin(t=1.5)),
+                     axis.text.y = element_text(size = 6, face = "bold"),
+                     axis.title.y = element_text(margin = margin(r=10), size = 7),
+                     panel.grid.major.y = element_line(linewidth = 0.3),
+                     plot.caption = element_text(hjust = 0, size = 7),
+                     plot.title = element_text(margin = margin(b = 30), hjust = 0.5))
+            }
+)
+```  
+
