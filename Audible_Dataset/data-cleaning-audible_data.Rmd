@@ -3,8 +3,8 @@ title: "Data Cleaning (R) - Audible Dataset"
 author: "Shefali C."
 date: "2023-10-04"
 output: 
-  html_document:
-    toc: true
+  rmdformats::readthedown:
+    toc_depth: 5
     theme: united
     highlight: tango
     css: audible_dataset.css
@@ -38,7 +38,7 @@ working_dir <- getwd()
 
 ```{r read-file, message=FALSE, warning=FALSE}
 #read data
-audible_data = readr::read_csv(paste0(working_dir, "/data/audible_dataset/audible_uncleaned.csv"))
+audible_data = readr::read_csv(paste0(working_dir, "/Audible Dataset/data/audible_uncleaned.csv"))
 ```
 
 ```{r data-preview1}
