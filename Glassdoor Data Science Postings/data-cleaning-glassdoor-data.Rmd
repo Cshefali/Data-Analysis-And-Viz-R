@@ -1,0 +1,70 @@
+---
+title: "Data Cleaning- Glassdoor Dataset"
+author: "Shefali C."
+date: "2023-10-27"
+output: 
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This notebook contains steps on data manipulation in R. Most of the steps involve handling text data as the dataset used comprises mostly of textual columns.  
+The dataset can be downloaded from [here on kaggle](https://www.kaggle.com/datasets/rashikrahmanpritom/data-science-job-posting-on-glassdoor).
+
+```{r load-libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+library(janitor)
+```
+
+```{r read-data}
+#working directory
+working_dir <- getwd()
+
+#read the unclean csv file
+data <- readr::read_csv(file.path(working_dir, 
+                                  "data/DS_Job_Postings_Glassdoor/Uncleaned_DS_jobs.csv"))
+
+```
+
+## Structure of dataframe
+
+**`str(data)`** returns a list of attributes about the dataframe. These include class, column names, data type of the columns and problems with the df.  
+
+```{r data-struc}
+str(data)
+```
+
+Using **`attributes(data)`** returns a similar list with:  
+  - row.names  
+  - names (name of columns)  
+  - spec (specifications about col-type)  
+  - problems, and  
+  - class.  
+
+
+```{r data-attr1}
+attributes(data)
+```
+
+Each of these individual attributes can also be accessed like this:  
+**`attr(data, "spec")`** for only specifications.  
+**`attr(data, "class")`** for class of the object and so on...  
+  
+```{r data-attr2}
+attr(data, "class")
+attr(data, "spec")
+```
+  
+
+These attributes give similar result using individual functions like:  
+  - **`class(data)`**  
+  - **`spec(data)`**  
+  - **`names(data)`**  
+  
