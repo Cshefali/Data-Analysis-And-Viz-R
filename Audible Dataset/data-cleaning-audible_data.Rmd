@@ -1,0 +1,538 @@
+---
+title: "Data Cleaning (R) - Audible Dataset"
+author: "Shefali C."
+date: "2023-10-04"
+output: 
+  html_document:
+    toc: true
+    theme: united
+    highlight: tango
+    css: audible_dataset.css
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+This notebook answers some of the most common "How To.." questions that pop-up during data cleaning.  
+I've also cleaned this notebook in Python. You may check out the Python version [here on Kaggle](https://www.kaggle.com/code/cshefali/some-common-how-tos-in-data-cleaning-in-python).  
+
+I hope both versions of this work helps beginners to understand corresponding functions in Python and R.
+
+The Audible Dataset used in this notebook can be found [here](https://www.kaggle.com/datasets/snehangsude/audible-dataset/data).  
+
+
+```{r load-libraries, message=FALSE, warning=FALSE}
+
+library(tidyverse) # metapackage of all tidyverse packages
+library(lubridate) # to work on dates
+```
+
+```{r set-working-dir}
+#the working directory
+working_dir <- getwd()
+```
+
+
+```{r read-file, message=FALSE, warning=FALSE}
+#read data
+audible_data = readr::read_csv(paste0(working_dir, "/data/audible_dataset/audible_uncleaned.csv"))
+```
+
+```{r data-preview1}
+#preview of the data
+head(audible_data, 4)
+```
+
+From the sample data above and information below, we can list out some inconsistencies in the dataframe.  
+1. **author-** "Writtenby:" can be removed; multiple author names can be placed in different columns.  
+2. **narrator-** "Narratedby:" can be removed.  
+3. **time-** is of type `str`; can be converted to numeric or datetime type. We'll see what should be done here.  
+4. **releasedate-** is of type `str`; should be of type `date`.  
+5. **language-** all values should be in uniform case; first letter capital, rest smallcase.  
+6. **stars-** can be split into i) number of stars and ii) total number of ratings columns.  
+7. **price-** is of type `str`; should be float.
+
+```{r data-info1}
+#information about the data
+glimpse(audible_data)
+```
+
+```{r data-stats1}
+#stats
+summary(audible_data)
+```
+
+# Data Cleaning Steps
+
+
+## 1. How to check total count of each category?
+
+```{r books-count}
+#total count of each unique book
+book_count <- audible_data %>%
+                group_by(name) %>%
+                summarize(total_count = n()) %>%
+                arrange(-total_count)
+
+#books with 10 or more observations.
+book_count %>% filter(total_count >= 10)
+```
+
+
+## 2. How to check number of duplicate rows?  
+
+```{r duplicate-rows}
+#total number of duplicate rows
+sum(duplicated(audible_data))
+```
+
+
+## 3. How to remove a string pattern?  
+
+#### Changes mades to the **author** column:  
+1. Removed "Writtenby:".  
+2. Add space between first, middle(if any) and last names of the authors.  
+3. Since some books have multiple authors, this column is split into multiple columns with 1 author name in each.  
+
+The 3rd step is optional.  
+I've added it here just to showcase how to split a text column into multiple columns, and assign column names automatically using prefixes like author1, author2 etc. 
+
+```{r remove-writtenby}
+#Author column
+#remove the phrase "Writtenby:"
+audible_data$author <- stringr::str_replace(audible_data$author, 
+                                            pattern = 'Writtenby:', replacement = '')
+#after removing "Written By", author column looks like:
+head(audible_data[,'author'], 4)
+```
+
+ 
+
+## 4. How to add space between 2 or more word blocks? (here first, middle, last name)
+
+#### Regular Expression used:  
+
+1. **"([a-z])([A-Z])"-** means match a lowercase letter followed by an uppercase letter. So, group 1 is ***[a-z]*** and group 2 is ***[A-Z]***.  
+2. **"\\\1 \\\2"-** means add space wherever uppercase letter(group 2) is followed by lowercase letter group(group 1).  
+
+So, for example, 'ChandlerBing' becomes 'Chandler Bing'.  
+
+**NOTE:**  
+1. Some rows contains muliple author names. e.g. **"ChandlerBing, RossGeller, PhoebeBuffay"**.  
+2. If **`str_replace()`** is used below, space will be added to only the first author name, ie. **"Chandler Bing, RossGeller, PhoebeBuffay"**.  
+3. Applying **`str_replace_all()`** adds space to all author names, i.e. **"Chandler Bing, Ross Geller, Phoebe Buffay"**.  
+
+```{r author-add-space}
+#Add space between the first, middle and last names of Authors.
+#e.g. JaneAustin becomes Jane Austin
+audible_data$author <- stringr::str_replace_all(audible_data$author, 
+                                            pattern = "([a-z])([A-Z])", 
+                                            replacement = "\\1 \\2")
+head(audible_data[,'author'], 4)
+```
+
+
+
+## 5. How to split a value into multiple columns and assign column name with prefix/suffix?  
+
+**`str_count()`** below finds the number of occurances of comma ',' in each row of author column. Then maximum number of occurances is found and 1 is added.  
+So, if there are three commmas in any given row, it implies that row has 4 names in the author column.  
+And 4 columns will be created to store each author name.  
+
+```{r count-commas}
+#maximum number of authors for any book.
+#helps to determine max number of columns needed to keep indiviudal authors
+max_columns <- max(str_count(audible_data$author, ',')) + 1
+```  
+
+```{r split-author}
+#split the author column.
+audible_data <- audible_data %>% separate(col = author,
+                         into = paste0('author', seq_len(max_columns)),
+                         sep = ',',
+                         fill = 'right')
+```  
+
+```{r tail-preview}
+tail(audible_data,3)
+```  
+
+
+
+## 6. How to find total number of NA in each column?  
+
+Here, I wanted to see if it's at all useful to split the author column or not.  
+As we can see from the NA value counts below, the newly created columns ***author2, author3, author4*** are mostly vacant.  
+Majority of the books have only 1 author and about 14,000 books have 2 authors.  
+(Total number of unique books in the data- 82767)
+
+```{r total-na}
+#find total number of NA in colnames containing 'author' 
+#(author1, author2, author3, author4)
+rbind(colSums(is.na(audible_data %>% select(contains('author')))))
+```
+
+#### Changes made to narrator column:  
+1. Removed "Narratedby:".  
+2. Add space between first, middle and last names of the narrator.  
+3. Here, I haven't split this column for multiple narrators.  
+
+```{r remove-narratedby}
+#remove "narrated by" from the beginning
+audible_data$narrator <- stringr::str_replace(audible_data$narrator, 
+                                             pattern = "Narratedby:",
+                                             replacement = "")
+```
+
+
+```{r narrator-addspace}
+#add space between first and last names
+audible_data$narrator <- stringr::str_replace_all(audible_data$narrator,
+                                                 pattern = "([a-z])([A-Z])",
+                                                 replacement = "\\1 \\2")
+```
+
+### Time column
+
+1. This column contains duration of audiobooks in text format.  
+2. Some rows contain ***'xx hrs and yy mins'*** while others contain ***'y mins', 'less than 1 minute'*** etc.  
+        In order to see all unique formats present, a copy of the time column has been created.  
+        
+```{r copy-time}
+#make a copy of time column to understand all kind of formats in which data is present
+time_column = audible_data$time
+```
+
+All digits have been removed to see what all phrases are present.  
+
+
+```{r unique-time}
+#replace all numbers with blanks
+time_column = str_replace_all(time_column,
+                              pattern = '[0-9]', replacement = '')
+#keep only unique patterns
+unique(time_column)
+```
+
+- **`Assumption:`** All rows with ***Less than xx minutes*** will be replaced with ***xx minutes***.  
+- Below, I've filtered out all row indices which have this 'less than..' values to see all distinct durations.  
+- Since only 1 unique value present, ***less than 1 minute***, it can be simply replaced with '1'.  
+- If other values were present like ***less than 5 minutes, less than 10 mins*** etc., then we would have used regular expressions to extract and store the digits.   
+
+```{r}
+#find rows with "less than x minute" values in audiobook duration
+less_than_duration = grep(pattern = 'less than', audible_data$time, ignore.case = T)
+#check all unique values with 'less than' pattern
+audible_data[less_than_duration,'time'] %>% distinct()
+```
+
+The objective is to:  
+1. Create 2 columns **`hour_component`** and **`min_component`** to store the hour and minute duration of the audiobook.  
+2. Examples:  
+     - ***'17 hrs and 5 mins'*** will split into 17 in hour column and 5 in minute column.  
+     - ***'24 mins'*** will be stored as 0 in hour column and 24 in minute column.  
+     - ***'less than 1 minute'*** will be stored as 0 in hour and 1 in minute column.  
+     
+
+```{r}
+#create 2 columns- 1 for hour component and the other for minute component.
+audible_data$hour_component <- 0
+audible_data$min_component <- 0
+```  
+
+
+## 7. How to extract digits before a specifc word?  
+
+Regular Expression used:  
+1. **"^-"** indicates start matching the pattern from beginning of the string.  
+2. **"([0-9]+)"-** is the capture group. Means look for one or more digits.  
+3. **+** means one or more occurances of digits.  
+4. **"([0-9]+) hr"** captures digits before the word hr or hrs.  
+5. **"([0-9]+) min"** captures digits before min/mins/minutes words.
+
+```{r extract-hr-min}
+#extract number of hours
+audible_data$hour_component <- stringr::str_extract(audible_data$time, 
+                                                    pattern = '^([0-9]+) hr')
+#remove the 'hr' part
+audible_data$hour_component <- stringr::str_replace(audible_data$hour_component,
+                                                   pattern = ' hr', replacement = '')
+#extract number of minutes
+audible_data$min_component <- stringr::str_extract(audible_data$time, pattern = '([0-9]+) min')
+#remove the 'min' part
+audible_data$min_component <- stringr::str_replace(audible_data$min_component,
+                                                   pattern = ' min', replacement = '')
+```  
+
+```{r view-time}
+#preview of extracted time
+head(audible_data %>% select(time, hour_component, min_component), 5)
+``` 
+
+```{r view-dtype}
+#checking the datatype of all cols now
+glimpse(audible_data)
+```
+
+
+## 8. How to convert NA values to 0?  
+
+Now, after digits extraction, values like ***'24 mins'*** will keep 24 in minute column and NA in hour column.  
+Similarly, a value like ***'11 hrs'*** will keep NA in minutes column.  
+Below, these NA values have been replaced with 0.
+
+```{r replace-na}
+audible_data$hour_component <- audible_data$hour_component %>% replace_na('0')
+audible_data$min_component <- audible_data$min_component %>% replace_na('0')
+```  
+
+
+## 9. How to change the datatype of multiple columns?
+
+Now, we can change the datatype of hour and minutes from strings to integers.  
+
+```{r change-toint}
+#convert the hour and min column to int type
+audible_data = audible_data %>%
+                mutate(hour_component = as.integer(hour_component),
+                      min_component = as.integer(min_component))
+```  
+
+### Date column
+
+Dates are written in dd-mm-yy format.  
+They are in character format and will be converted to date type.  
+But before that, we need to make sure that each of the components are consistent. That is:  
+    - **dd** doesn't exceed 31.  
+    - **mm** doesn't exceed 12.  
+    - In the [datacard](https://www.kaggle.com/datasets/snehangsude/audible-dataset/data) on Audible dataset page, its mentioned that some books are yet to be released, which means we can have year value greater than 2023.  
+
+
+```{r preview-date}
+head(audible_data %>% select(releasedate), 4)
+```  
+
+ 
+
+## 10. How to check for inconsistencies in date column stored as a string?  
+Regular expressions used:  
+1. **"^([0-9]+)"-** check for the digit from beginning of string (^) and before hypher -.  
+2. **"-([0-9]+)-"** check for the digits between the two hyphens.  
+3. **"-([0-9]+)\$"-** capture the digits after hyphen sign and end of the string. 
+
+```{r check-dd}
+#day component- dd
+#check if any value in day part > 31.
+any(
+    as.integer(
+        unique(
+            str_extract(string = audible_data$releasedate, pattern = '^([0-9]+)')
+            )
+    ) > 31)
+```  
+
+```{r check-mm}
+#check for inconsistencies in month of release date
+#Check to see whether middle values (months) contain any number > 12
+#all unique months. 
+
+#extract all months; E.g. extracted format is: "-05-" for May
+unique_months <- unique(str_extract(string = audible_data$releasedate, pattern = '-([0-9]+)-'))
+#remove both hyphens
+unique_months <- str_replace_all(string = unique_months, pattern = '-', repl = '')
+#convert to integer and check if any value exceeds 12 (12 months)
+any(as.integer(unique_months) > 12)
+```
+
+
+
+## 11. How to convert date stored as string to 'date' type? 
+
+In the Py version of this notebook [here on Kaggle](https://www.kaggle.com/code/cshefali/some-common-how-tos-in-data-cleaning-in-python), I've added a note in this part.  
+          If date string is in format: **04-08-23**, then separator used in **"format"** parameter should be **`%d-%m-%Y`** and not **`%d/%m/%Y`**.  
+          
+But no such caution was needed here. Only thing to note in case of R is to make sure the right function is used.  
+Since the date in our df is of form: dd-mm-yy, hence **`dmy()`** has been used.  
+If in the date, month was mentioned first, followed by day, then year, then **`mdy()`** would have been the right function.
+
+```{r view-releasedate}
+head(audible_data %>% select(name, releasedate), 3)
+```  
+
+```{r convert-date}
+#convert to date type
+audible_data$release_date <- lubridate::dmy(audible_data$releasedate)
+#view datatype of all cols now
+glimpse(audible_data)
+```  
+
+
+
+## 12. How to convert text to one uniform case? 
+
+```{r unique-lang}
+#all unique languages in the dataset
+unique(audible_data$language)
+```
+
+```{r capitalize-lang}
+#capitalize the language names
+audible_data$language <- stringr::str_to_title(audible_data$language)
+```
+
+### Stars column  
+
+The objective is to create 2 columns out of the stars column:  
+- **`stars_out_of_5`-** will contain numeric values like 2, 4.5 etc.  
+- **`total_ratings`-** total number of reviews received on the particular audiobook.   
+
+- Example: ***\"4.5 out of 5 stars7 ratings\"*** 
+<br>
+- This column will be split after the word 'stars'.  
+- Then **' out of 5'** will be removed and remaining number will be converted to float type.  
+- In the `total_ratings` column, **"ratings"** will be removed and values will be converted to float type.  
+
+```{r view-stars-col}
+head(audible_data %>% select(name, stars), 3)
+```
+
+
+```{r split-stars-col}
+#split the stars column after the word 'stars'
+#rows with 'Not yet rated' return NA in 'total_ratings' column after separation
+audible_data <- audible_data %>% 
+                    separate(col = stars,
+                            into = c('stars_out_of_5', 'total_ratings'),
+                            sep = 'stars',
+                            #do not remove the original column
+                            remove = F,
+                            #row containing 'Not yet rated' returns NA.
+                            #NA should be filled starting from right-hand-side column
+                            fill = 'right')
+```
+
+```{r view-split-stars-col}
+#some unique rows in the data
+audible_data[sample(nrow(audible_data),40),c('stars', 'stars_out_of_5', 'total_ratings')] %>% distinct()
+```
+
+**Out of 87,489 rows in the df, 72,417 contain "Not yet rated" for books that have not been rated yet!**  
+
+There is no point in removing all these rows and perform an analysis. But I want to showcase some more queries that arise while cleaning a dataframe. For e.g. ***How do you extract a floating point number occuring before a text? and so on..***  
+
+The objective is to make these columns numeric by extracting the numeric part from the ratings e.g. 4.5 out of 5 becomes 4.5 & 106 ratings becomes 106.  
+
+When this is done, the "Not rated yet" rows will get converted to NA. 
+I wanted to keep a copy of the data cleaned so far.  
+So, the subsequent cleaning steps have been performed on a copy of this dataframe.
+
+```{r clean-data-copy}
+#make a copy of dataframe cleaned so far.
+audible_data_copy <- audible_data
+```
+
+#### Steps taken below:  
+
+1. Remove ***'out of 5'*** from `stars_out_of_5` column to retain only the digit part.  
+2. Remove ***'ratings'*** from `total_ratings` column to retain only the numeric part.  
+3. Remove commas from values like ***1,500*** in `total_ratings` column. (Bcz this column has to be converted to numeric.)  
+
+```{r clean-stars-col}
+#remove 'out of 5' from 'stars_out_of_5' column
+audible_data$stars_out_of_5 <- stringr::str_replace(audible_data$stars_out_of_5, 
+                                                    pattern = ' out of 5', replacement = '')
+#remove 'ratings' from 'total_ratings' column
+audible_data$total_ratings <- stringr::str_replace(audible_data$total_ratings,
+                                                  pattern = ' ratings', replacement = '')
+#remove commas from values like 1,500 from total_ratings
+audible_data$total_ratings <- str_replace(audible_data$total_ratings, 
+                                         pattern = ',', replacement = '')
+```
+
+```{r change-dtype-stars}
+#finally change the datatype of both columns
+audible_data <- audible_data %>%
+                    mutate(stars_out_of_5 = as.numeric(stars_out_of_5),
+                          total_ratings = as.integer(total_ratings))
+glimpse(audible_data)
+```
+
+### Price column  
+
+#### Steps taken:
+
+1. Replace 'Free' with 0.  
+2. Remove commas from prices. Currently, this column is of type str; it has to be converted to numeric.  
+3. Convert to float.  
+
+```{r clean-price}
+#convert price to float type
+
+#replace 'free' with 0
+audible_data$price = str_replace(audible_data$price, regex(pattern = 'free',ignore_case = TRUE),
+                                replacement = '')
+#remove ',' from the values
+audible_data$price = str_replace(audible_data$price, pattern = ',', replacement = '')
+#convert to float
+audible_data$price = as.numeric(audible_data$price)
+```  
+
+```{r view-data-structure}
+str(audible_data)
+```
+
+```{r view-colnames}
+colnames(audible_data)
+```
+
+And finally, I've created a subset of the dataframe with all relevant columns.  
+
+```{r}
+#select relevant columns
+final_data <- audible_data %>%
+                select(name, contains('author'), narrator, time, hour_component, min_component,
+                      release_date, language, stars_out_of_5, total_ratings, price)
+#view a sample of the final data
+final_data[sample(nrow(final_data),5),]
+```  
+
+
+
+## 14. How to extract decimal numbers from a text?
+
+I used this step in initial phase of cleaning this dataframe, but then dropped it from the final draft.  
+But since this notebook contains "How To.." steps, I've included it below just for the sake of future reference.  
+
+1. **`stars_out_of_5` column-** example- ***4.5 out of 5***.
+     - **What I've done above**- replace 'out of 5' with '', then convert 4.5 from string to float.  
+     - **Another way**- extract the floating-point number from this text, i.e. 4.5 and then convert it to float.
+     
+
+```{r create-example}
+#example
+ratings <- data.frame(rating1 = c('4.5 out of 5', '3 out of 5', '.5 out of 5'))
+ratings$rating2 <- ratings$rating1
+```  
+
+Regular expression used:  
+
+1. **[0-9]\*-** means 0 or more occurance of a digit.  
+2. **"\.?"-** means presence of a decimal point is optional.  
+3. So, **"[0-9]\*.?"** means 0 or more occurances of digits before decimal point.  
+This pattern helps to capture values like **.5** where there are no digits before decimal.  
+4. **".?[0-9]+"** ensures that there must be one or more digits after the decimal point.  
+
+
+```{r extract-float-nums}
+ratings$rating2 <- str_extract(ratings$rating1, regex(pattern = '([0-9]*\\.?[0-9]+)'))
+ratings
+```  
+
+So, this is it!  
+Ofc, there are many more ways of carrying out the cleaning process.  
+I hope this will be helpful for the readers in some way.  
+Thanks for reading :)  
+
