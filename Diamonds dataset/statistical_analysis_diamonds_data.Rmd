@@ -1,0 +1,865 @@
+---
+title: "Diamonds data - Descriptive Statistics"
+author: "Shefali C."
+date: "2024-02-20"
+output: 
+    html_document:
+      toc: true
+      toc_depth: 4
+      toc_float: 
+        collapsed: false
+        smooth_scroll: false
+      theme: cosmo
+      highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.align = 'center',
+                      fig.width = 6,
+                      fig.height = 4)
+```
+
+
+```{r load-libraires, message=FALSE, warning=FALSE}
+library(tidyverse)
+#to visualize missing values
+library(visdat)
+library(patchwork)
+#to build treemap
+library(treemap)
+#to create text grobs
+library(grid)
+#to stop scientific notation on axes
+library(scales)
+#to build marginal distribution plots
+library(ggExtra)
+```
+
+This notebook contains a list of most popular data distribution charts used to analyse a dataset in initial phase followed by a detailed analysis.
+
+## **Data description**
+
+- `x`- length of diamond in mm.  
+- `y`- width of diamond in mm.  
+- `z`- depth of diamond in mm.  
+- `depth`- This is actually the depth % of the diamond.  
+It is calculated as: $depth\% = z / mean(x + y)$. To simplify, $depth\% = 2z / (x+y)$.  
+- `carat`- weight of the diamonds. Determined by x, y and z values.  
+- `clarity`- contains 8 ordered levels from "SI2" (worst) to IF (best); (SI2 contains high impurities). It affects the brilliance of a diamond. It determines how light gets reflected internally in a diamond, resulting in the glimmer.  
+
+- `cut` 5 categories: Fair < Good < Very Good < Premium < Ideal.  
+- `color`- Colourless diamonds are considered better than the ones with yellowish-brownish tint.  
+      - This dataset contains diamonds of 7 colours- "D" to "J".  
+      - D, E, F are colorless & G-J have a very faint color.  
+      - The default ordering seemed a bit confusing to me as it goes like D < E < F < ... < J.  
+**Please note-** D is the best diamonds in terms of color and J is the worst, w.r.t to this dataset.  
+
+- `table`- the width of the top of diamond.  
+- `price`- price of diamonds in USD. 
+
+**The key benchmark descriptors of a diamond are the 4 Cs- carat, color, cut and clarity.**
+
+
+```{r data-summary}
+df1 <- diamonds
+#quick view
+glimpse(df1)
+```
+
+```{r}
+#check summary
+summary(df1)
+```
+
+
+## **Initial Observations from summary stats:**  
+
+1. `carat` ranges from 0.20 to 5.01. But 75% of diamonds lie below 1.04 carats. This implies presence of high outliers & data seems right-skewed.  
+
+2. `cut`- "very good", "premium" and "ideal" diamonds form roughly 88% (~87.91) of the data with diamonds of ideal cut being highest in number.  
+3. `color`- Diamonds with color rating "G" are highest in number with "J", the lowest quality, being least.  
+
+4. `clarity`- `summary(df1)` shows a category as "(others)" above. Use `summary(df1$clarity)` to see all the levels clearly. "others" has masked two levels- I1, IF.  
+
+5. `depth` featue seems symmetric and tightly distributed. In other words, most of the datapoints lie close to the mean/median value of 61.75.  
+
+6. In order to avoid confusion, I'll rename the column "z" to depth & "depth" to "depth_perc" (depth percentage).  
+
+7. `z` which reflects depth of a diamond has a minimum value of 0.000;
+it seems quite unlikely for a diamond to have absolutely no depth!  
+
+8. Similarly, `x` and `y` too have minimum value of 0.000mm. Maybe it's the same rows where z = 0.000. This will be checked later.  
+
+## **I. Data Cleaning** 
+
+### **1. Missing Values- none**  
+
+I've added 2 methods to see missing values here, one is through code result and the other is grahical.  
+
+#### **a) Usual method of checking missing values** 
+
+`sum(is.na(df))` counts total number of NA's in entire dataframe.
+
+```{r na1-1}
+#count NAs in entire dataframe
+sum(is.na(df1))
+```
+
+The method below computes missing values in each column.  
+
+```{r na1-2}
+#NAs in each row
+rbind(colSums(is.na(df1)))
+```
+
+#### **b) Graph of Missing values**
+
+Below, `vis_miss()` of visdata package has been used to build a graph of missing values. Since, no missing values present, hence the entire graph is grey, if missing values were present, we would have seen some horizontal lines inside each column.
+
+<span style="color:blue">***`vis_miss()` is ggplot-based, so ggplot2 functions can be added as layers to improve aesthetics.***</span>
+
+```{r na2-graph, fig.width=6, fig.height=4, fig.align='center'}
+visdat::vis_miss(df1)+
+  theme(axis.title.y = element_text(size = 10),
+        axis.text = element_text(color = "black", size = 8))
+```
+
+### **2. Duplicate Rows- found.**  
+
+```{r duplicate-count}
+
+#total number of duplicate rows
+sum(duplicated(df1))
+```
+
+```{r duplicate-view}
+
+#view all duplicate rows
+df1[duplicated(df1),]
+```
+
+It is highly unlikely for diamonds to have exactly all 10 features with same values. While price, cut, clarity etc. can be same, even length, width and depth, table have exactly same measurements. 
+So, I'm removing these duplicate rows.  
+
+```{r remove-duplicate}
+#remove duplicate rows
+df1_unique <- df1 %>% distinct()
+```
+
+### **3. Rename columns**
+
+```{r rename-columns}
+
+#renaming some columns to avoid confusion
+df1_unique <- df1_unique %>% 
+                rename(length = x,
+                       width = y,
+                       depth = z,
+                       depth_perc = depth)
+```
+
+
+### **4. Check for unsual values**
+
+As mentioned earlier, **`length`, `width`, `depth`** have a minimum value of 0.000mm which seems unlikely for any diamond. 
+
+```{r}
+summary(df1_unique[,c('length', 'width', 'depth')])
+```
+
+Depth percentage is calculated as : $2*z/(x+y)$.  
+If depth is 0, then depth% should also be 0.
+
+#### **a) Length column**
+
+```{r zero_length_rows}
+df1_unique %>% subset(length < 0.001, select = c(carat, length, width,depth, depth_perc))
+```
+
+All 7 rows have depth 0 but some value in $depth\%$ column, which is just not possible!  
+
+#### **b) Width column**
+
+
+```{r width_zero_rows}
+
+#checking rows with width 0
+df1_unique %>% 
+  subset(width < 0.001,
+         select = c(carat, length, width, depth,depth_perc))
+```
+
+All these rows with 0 length and width also have depth=0.  
+
+#### **c) Depth column**
+
+```{r depth_zero}
+
+#see all rows with depth 0
+df1_unique %>% 
+  subset(depth < 0.001,
+         select = c(carat, length, width, depth, depth_perc))
+```
+
+Since there are 19 rows with depth=0.000, I'll start by first removing these rows and see how many length=0 or width=0 get eliminated.  
+
+```{r remove_width_zero}
+
+#remove rows with width=0.000
+df1_unique <- df1_unique %>% 
+                filter(depth > 0.001)
+```
+
+#### **d) Checking for values in length & width again:**
+
+```{r check_len_wid}
+
+#checking number of rows still left with length=0.000 or width=0.000
+df1_unique %>% 
+  subset(width < 0.001 | length < 0.001,
+         select = c(carat, length, width, depth, depth_perc))
+```
+
+Removing rows with depth=0.000 also removes rows with length=0.000, width=0.000.  
+
+## **II. All Data-Distribution Graphs**
+
+Following charts have been created to show the range of options available to visualize data.  
+The next section "Detailed Analysis" contains an in-depth analysis of the dataset. 
+
+```{r set_common_theme}
+theme_set(
+  theme_bw()+
+  theme(axis.text = element_text(color = "black", size = 9, face = "bold"),
+        axis.title = element_text(size = 8, face = "bold"),
+        plot.title = element_text(size = 9, hjust = 0.5),
+        plot.subtitle = element_text(size = 8, hjust = 0.5)
+        )
+)
+
+```
+
+
+### **1. Categorical Features**
+
+a) **Barcharts-** good to see total number of data points in each category.  
+b) **Heatmaps-** good to see total count of each sub-category for the main category. In the example below, we can visualize number of diamonds of each color for each type of cut.  
+
+c) **Treemaps-** can be used to visualize multiple categories within a category. In the e.g. below, the main category is cut, sub-category1 is color and sub-category2 is clarity of diamond. The area of tiles reflects the proportion of data points within each category.  
+
+
+#### **a) Barcharts**
+
+```{r barchart}
+
+#total count of each diamond-type in dataset
+df1_unique %>%
+    ggplot(aes(x=cut))+
+    geom_bar(color = "steelblue", fill = "lightblue", width = 0.5)+
+    geom_text(aes(label = after_stat(count)), stat = "count", size = 2,
+              fontface = "bold", vjust = -0.5)+
+    labs(title = "Ideal diamonds are highest in number",
+         x = "type of cut", y = "total count in the dataset")
+```
+
+#### **b) HeatMaps**
+
+Such maps can be used to view the 'group' with high count/value. For e.g.the map below shows the relationship between diamond cut and color.  
+The color intensity in the tiles reflect number of datapoints with the corresponding cut and color.  
+Darker tiles reflect high count.
+
+```{r group-cut-color, message=FALSE, warning=FALSE}
+#group data by cut and color
+cut_color_aggr <- df1_unique %>% 
+                    group_by(cut, color) %>% 
+                    summarise(total_count = n())
+```
+
+
+```{r heatmap}
+
+#heatmap using 2 ordinal variables- color, cut
+cut_color_aggr %>% 
+  ggplot(aes(x = cut, y = color, fill = total_count))+
+  geom_tile(color = "black")+
+  scale_fill_gradient(low = "#FFE900", high = "#E43D00")+
+  #remove space between X-Y axis and main plot
+  scale_y_discrete(expand = c(0,0))+
+  scale_x_discrete(expand = c(0,0))+
+  labs(title = "Frequency of diamonds grouped by cut & color ratings",
+       subtitle = "Dark color reflects higher count")
+
+```
+
+#### **c) Treemaps**
+
+```{r message=FALSE, warning=FALSE}
+
+#data prep- aggregate of the 3 Cs- cut, clarity and color
+aggr_3c <- df1_unique %>% 
+            group_by(cut, color, clarity) %>% 
+            summarise(total_count = n())
+```
+
+
+```{r treemap}
+
+#treemap of cut, color,  clarity
+treemap(aggr_3c,
+  index = c('cut', 'color', 'clarity'),
+  vSize = 'total_count',
+  type = "index",
+  title = "Number of diamonds by cut, color & clarity",
+  #increse label size if rectangles are bigger
+  inflate.labels = F,
+  bg.labels = "yellow",
+  #size of labels of each group, sub-group, sub-sub-group
+  fontsize.labels = c(10,8,6),
+  #border color for group, sub-group, sub-sub-group
+  border.col = c("black","black","white")
+)
+  
+```
+
+### **2. Numerical Features**
+
+#### **a) Histograms**
+
+```{r histograms}
+
+#simple histogram of carat distribution
+carat_hist <- df1_unique %>% 
+                ggplot(aes(x=carat))+
+                geom_histogram(binwidth = 0.3, fill = "pink",
+                               color = "#d45087",
+                               #boundary sets the X-labels as start-end values of an interval; and not in center of bar 
+                               boundary = 0,
+                               closed = "left")+
+                scale_y_continuous(expand = expansion(mult = c(0,0.02)))+
+                scale_x_continuous(breaks = seq(0,5.30,0.30),
+                                   labels = seq(0,5.3,0.3))+
+                labs(title = "Simple histogram",
+                     subtitle = "total diamond on Y-axis")+
+                theme(axis.text = element_text(size = 7))
+
+```
+
+
+```{r relative-freq-histogram}
+
+#Relative frequency histogram with % of data-points on Y-axis.
+carat_relative_hist <- df1_unique %>% 
+                          ggplot(aes(x=carat))+
+                          geom_histogram(aes(y = after_stat(count)/sum(count)),
+                                         binwidth = 0.3,
+                                         fill = "pink",
+                                         color = "#d45087",
+                                         boundary = 0,
+                                         closed = "left")+
+                          scale_x_continuous(breaks = seq(0,5.3,.3),
+                                             labels = seq(0,5.3,.3))+
+                          scale_y_continuous(expand = expansion(mult = c(0,0.02)))+
+                          labs(title = "Relative frequency histogram",
+                               subtitle = "relative % on Y axis",
+                               y = "freq percentage")+
+                          theme(axis.text = element_text(size = 7))
+```
+
+```{r hist_plots, fig.width=8}
+
+#histogram plots stitched
+(carat_hist + carat_relative_hist)+
+  plot_annotation(title = "Carat distribution: Two types of histograms",
+                  theme = theme(
+                    plot.title = element_text(size = 11, face = "bold", hjust = 0.5)))
+
+```
+
+#### **b) Annotate histogram with mean/median line** 
+
+In order to add labels like "mean", "median" along the mean/median lines, first we need to create a text graphical object or 'Grob' and then add it to ggplot using **`annotation_custom()`**.  
+**`annotate()`** can also be used here but **`annotation_custom()`** provides more control over the text aesthetics.
+
+```{r}
+
+#text graphical object for mean/median labels
+mean_label <- grid::textGrob(label = "mean",
+                            rot = 90, y = 0.80,
+                            gp = gpar(fontsize = 7,
+                                      fontface = "bold",
+                                      col = "darkgreen")
+                            )
+median_label <- grid::textGrob(label = "median",
+                               rot = 90, y = 0.90,
+                               gp = gpar(fontsize = 7,
+                                         
+                                         #fontface = "bold",
+                                         col = "blue")
+                               )
+
+#mean and median of diamond carats
+carat_mean <- mean(df1_unique$carat)
+carat_median <- median(df1_unique$carat)
+
+```
+
+
+```{r hist_with_annotation}
+
+df1_unique %>% 
+  ggplot(aes(x=carat))+
+  geom_histogram(binwidth = 0.3,
+                 fill = "pink",
+                 color = "#d45087",
+                 boundary = 0,
+                 closed = "left")+
+  #mean line
+  geom_vline(aes(xintercept = mean(carat)), color = "darkgreen", linetype = "dashed")+
+  #label mean
+  annotation_custom(mean_label, xmin = carat_mean+0.05, xmax = carat_mean+0.05)+
+  #median line
+  geom_vline(xintercept = carat_median, color = "blue",
+             linetype = "dashed", linewidth = 0.5)+
+  #label- median
+  annotation_custom(median_label, xmin = carat_median-0.05,
+                    xmax = carat_median-0.05)+
+  scale_x_continuous(breaks = seq(0,5.3,.3),
+                     labels = seq(0,5.3,.3))+
+  scale_y_continuous(expand = expansion(mult = c(0,0.02)))+
+  labs(title = "Carat Distribution")
+
+```
+
+#### **c) Density Plots**
+
+```{r density-plot}
+df1_unique %>% 
+  ggplot(aes(x=carat, fill = cut))+
+  geom_density(outline.type = "full", alpha = 0.9, 
+               color = "black")+
+  scale_y_continuous(expand = expansion(mult = c(0,0.02)))+
+  labs(title = "Density Plot for carats")
+
+```
+
+#### **d) Frequency Polygon**
+
+```{r freq-polygon}
+
+#frequency polygon for diamond carats- y axis: total count
+count_f_poly <- df1_unique %>%
+                  ggplot(aes(x=price, color = cut, fill = cut))+
+                  geom_freqpoly(binwidth=500)+
+                  scale_y_continuous(expand = expansion(mult = c(0,0.02)))+
+                  scale_x_continuous(breaks = seq(0,20000,3000),
+                                     labels = seq(0,20000,3000))+
+                  labs(title = "Frequency Polygon for diamonds price",
+                       subtitle = "Y-axis: total count (default)",
+                       x = "price (in USD)")+
+                  theme(legend.position = "none")
+
+#Y-axis is density, not diamonds count
+density_f_poly <- df1_unique %>% 
+                  ggplot(aes(x=price, color = cut, fill = cut))+
+                  geom_freqpoly(aes(y=after_stat(density)),binwidth=500)+
+                  scale_y_continuous(expand = expansion(mult = c(0,0.02)), labels = scales::comma)+
+                  scale_x_continuous(breaks = seq(0,20000,3000),
+                                     labels = seq(0,20000,3000))+
+                  labs(title = "Frequency Polygon for diamonds price",
+                       subtitle = "Y-axis: density",
+                       x = "price (in USD)")
+
+```
+
+```{r freq-poly-plots, fig.width=8}
+
+count_f_poly + density_f_poly
+
+```
+
+#### **e) Boxplots**
+
+```{r boxplot1}
+df1_unique %>% 
+  ggplot(aes(x=cut, y = carat, fill = cut))+
+  #add bars at the end of whiskers
+  stat_boxplot(geom = "errorbar", width = 0.3)+
+  geom_boxplot(outlier.color = "red", outlier.size = 1)+
+  labs(title = "Boxplots for carat distribution")
+
+```
+
+#### **f) Violin Plots**
+
+This is a combination of boxplot and density plot.
+
+```{r violin-plot}
+
+#violing plot is a combination of box and density plot
+df1_unique %>% 
+  ggplot(aes(x=cut, y = carat, fill = cut))+
+  #trim=F prevents trimming of violin ends, 
+  #displays violin for full range of carat
+  geom_violin(trim = F, draw_quantiles = c(0.25,0.5,0.75))+
+  labs(title = "Violin plot for carat distribution")
+
+```
+
+#### **g) Rug Plot with Scatter Plot**
+
+Rug plots are not separate plots; they just highlight each data point by creating a line for each data point along the axes.  
+
+
+```{r rug_scatter}
+df1_unique %>% 
+  filter(cut == "Ideal", color == "D", 
+         clarity %in% c("IF","VVS1")) %>% 
+  ggplot(aes(x=carat, y=price,color = clarity))+
+  geom_point()+
+  geom_rug()+
+  scale_color_manual(values = c("IF" = "cyan4", "VVS1" = "darkmagenta"))+
+  labs(title = "Rug plot + Scatter plot",
+       subtitle = "Ideal diamonds with color rating 'D'")
+```
+
+#### **h) Highlight marginal distribution**
+
+Marginal plots helps us visualize the distribution intensity at different values of the variable. 
+**`ggExtra`** package has been used. 
+
+
+```{r hist_marginal}
+
+#scatterplot with histogram highlighting marginal distribution
+scatter_plot <- df1_unique %>% 
+                  filter(cut %in% c("Ideal", "Premium")) %>% 
+                  ggplot(aes(x=carat, y = price))+
+                  geom_jitter(color = "darkmagenta")+
+                  labs(title = "Marginal Distribution through density plot",
+                       subtitle = "75% of diamonds have price below $5369, hence the histogram is skewed")
+
+ggExtra::ggMarginal(scatter_plot, type = "histogram",
+                    fill = "darkmagenta", margins = 'y')
+```
+
+## **III. Detailed Analysis**
+
+### **1. Total number of diamonds in each category of cut, color and clarity**
+
+```{r individual_barcharts}
+
+##individual plots
+#total count of each diamond-type in dataset
+cut_count <- df1_unique %>%
+    ggplot(aes(x=cut))+
+    geom_bar(color = "steelblue", fill = "lightblue", width = 0.5)+
+    geom_text(aes(label = paste0(round((after_stat(count)/sum(count))*100,2),"%")), 
+              stat = "count", size = 2,
+              fontface = "bold", vjust = -0.5)+
+    scale_y_continuous(expand = expansion(mult = c(0,0.07)))+
+    coord_cartesian(clip = "off")+
+    labs(title = "Ideal diamonds are highest in number",
+         x = "type of cut", y = "total count in the dataset")
+
+#total count of diamonds of each color type
+color_count <- df1_unique %>%
+              ggplot(aes(x=color))+
+              geom_bar(color = "steelblue", fill = "lightblue", width = 0.5)+
+              geom_text(aes(label = paste0(round((after_stat(count)/sum(count))*100,2),"%")), 
+                        stat = "count", size = 2,
+                        fontface = "bold", vjust = -0.5)+
+              scale_y_continuous(expand = expansion(mult = c(0,0.07)))+
+              coord_cartesian(clip = "off")+
+              labs(title = "Diamonds of color E,F,G form 56.8% of the dataset",
+                   x = "color of diamond", y = "")
+
+#total count of diamonds of each clarity type
+clarity_count <- df1_unique %>%
+              ggplot(aes(x=clarity))+
+              geom_bar(color = "steelblue", fill = "lightblue", width = 0.5)+
+              geom_text(aes(label = paste0(round((after_stat(count)/sum(count))*100,2),"%")), 
+                        stat = "count", size = 2,
+                        fontface = "bold", vjust = -0.5)+
+              scale_y_continuous(expand = expansion(mult = c(0,0.07)))+
+              coord_cartesian(clip = "off")+
+              labs(title = "Diamond clarity",
+                   x = "diamond clarity", y = "")
+```
+
+```{r stitched_barcharts, fig.width=10}
+
+#stitch all bar charts
+cut_count + color_count + clarity_count
+
+```
+
+**Observations:**  
+
+1. The dataset contains super-quality diamonds in terms of their cut; 'Premium' & 'Ideal' diamonds are most abundant.  
+
+2. Diamonds with color rating 'G' are highest in number followed by 'E'. D-F color rating diamonds are colorless, hence of better standards. G-J rated diamonds have a yellowish tint as we progress from G < H < I < J.  
+'G' diamonds lie on the margin of these 2 groups and they are most abundant in the dataset.  
+
+3. "IF", 'Internally Flawless' diamonds are the best in terms of clarity and they have the second lowest count in our dataset. 
+
+The 4Cs- carat, cut, color, clarity are considered the benchmarks for assessing diamonds and in upcoming section, we'll see how each of these factors affect the diamond price individually and together.  
+
+### **2. Frequency of diamonds based on 2 features** 
+
+```{r individual_heatmaps, message=FALSE, warning=FALSE,fig.width=10}
+
+cut_color_heatmap <- df1_unique %>% 
+                      group_by(cut, color) %>% 
+                      summarize(total_count = n()) %>% 
+                      ggplot(aes(x=cut, y = color, fill = total_count))+
+                      geom_tile(color = "black")+
+                      scale_x_discrete(expand = c(0,0))+
+                      scale_y_discrete(expand = c(0,0))+
+                      scale_fill_gradient(low = "yellow",
+                                          high = "firebrick",
+                                          guide = guide_colorbar(title = "diamonds count", title.theme = element_text(size = 7, face = "bold", vjust = 2)))+
+                      labs(title = "Ideal diamonds with color rating 'G' are most abundant")
+
+#cut and clarity
+cut_clarity_heatmap <- df1_unique %>% 
+                      group_by(cut, clarity) %>% 
+                      summarize(total_count = n()) %>% 
+                      ggplot(aes(x=cut, y = clarity, fill = total_count))+
+                      geom_tile(color = "black")+
+                      scale_x_discrete(expand = c(0,0))+
+                      scale_y_discrete(expand = c(0,0))+
+                      scale_fill_gradient(
+                                          low = "yellow",
+                                          high = "firebrick",
+                                          guide = guide_colorbar(title = "diamonds count", title.theme = element_text(size = 7, face = "bold", vjust = 2)))+
+                      labs(title = "Ideal diamonds with VS2 clarity are most abundant")
+
+cut_color_heatmap + cut_clarity_heatmap
+
+```
+
+```{r message=FALSE, warning=FALSE}
+df1_unique %>% 
+  group_by(color, clarity) %>% 
+  summarize(count = n()) %>% 
+  ggplot(aes(x=color, y=clarity, fill=count))+
+  geom_tile(color = "black")+
+  scale_x_discrete(expand = c(0,0))+
+  scale_y_discrete(expand = c(0,0))+
+  scale_fill_gradient(low = "yellow", high = "firebrick",
+                      guide = guide_colorbar(title = "diamonds count", title.theme = element_text(size = 8, face = "bold")))+
+  labs(title = "Majority of diamonds with color rating 'E' have clarity SI1 or VS2")
+```
+
+### **3. Which type of diamonds are most abundant considering cut, color and  clarity?**
+
+```{r grid_plot, fig.width=10, fig.height=8, warning=FALSE,message=FALSE}
+
+#grouped by cut, clarity and color
+df1_unique %>% 
+  group_by(cut, color, clarity) %>% 
+  summarize(total_count = n()) %>% 
+  ggplot(aes(x=cut, y= total_count, fill = cut))+
+  geom_bar(stat = "identity")+
+  scale_y_continuous(expand = expansion(mult = c(0,0.05)))+
+  facet_grid(clarity~color)+
+  theme(
+    strip.text.x = element_text(size = 5, margin = margin(t=0.4,b=0.4), face = "bold"),
+    strip.text.y = element_text(size = 5,face = "bold", margin = margin(r=0.4,l=0.4)),
+    axis.text = element_text(size = 6),
+    axis.text.x = element_text(angle = 90)
+  )+
+  labs(title = "Diamond frequency based on 3Cs",
+       y="")
+
+```
+
+**Observations**  
+
+1. Ideal diamonds- 'E' color and 'VS2' clarity are the most abundant.  
+2. Majority of diamods lie in the clarity rating of 'VS2','SI1' & 'SI2'.  
+
+### **4. Trends in Price & Carat with the 3Cs**
+
+#### **a) Cut**
+
+```{r cut_price_boxplot, fig.width=10, fig.height=6}
+cut_price <- df1_unique %>% 
+              ggplot(aes(x=cut, fill = cut, y = price))+
+              stat_boxplot(geom = "errorbar", width = 0.3)+
+              geom_boxplot(color = "black", outlier.colour = "red",
+                           outlier.size = 0.3)+
+              labs(title = "Price distribution of diamonds based on cut")+
+  theme(legend.position = "none")
+#carat-cut boxplot
+cut_carat <- df1_unique %>% 
+  ggplot(aes(x=cut, y = carat, fill = cut))+
+  stat_boxplot(geom = "errorbar", width = 0.3)+
+  geom_boxplot(color = "black", outlier.colour = "red", outlier.size = 0.6)+
+  labs(title = "Carat distribution with respect to cut")+
+  theme(legend.position = "none")
+
+cut_price + cut_carat
+```
+
+**Observation:**  
+
+- Ideal cut diamonds are the best and 'Fair' cut is the worst, among all; yet the the median price of Ideal diamonds is the lowest!  
+
+```{r ideal_quantile}
+#checking the quantile values for Ideal diamonds
+print("Carat percentile of Ideal diamonds")
+quantile(df1_unique$carat[df1_unique$cut == "Ideal"])
+
+```
+
+- Although Ideal diamonds account for 39% of the dataset, 75% of them are below 1 carat & 50% of all ideal diamonds are not even half a carat, which to some extent explains why median price of ideal diamonds is lower.  
+
+#### **b) Color**
+
+
+```{r color_price_boxplot, fig.width=10, fig.height=6}
+
+#boxplot of color and price of diamond
+color_price <- df1_unique %>% 
+  ggplot(aes(x=color, y = price, fill = color))+
+  stat_boxplot(geom = "errorbar", width = 0.3)+
+  geom_boxplot(color = "black", outlier.colour = "red",
+               outlier.size = 0.4)+
+  labs(title = "Price distribution with respect to diamond color")+
+  theme(legend.position = "none")
+
+#boxplot of color and carat
+color_carat <- df1_unique %>% 
+  ggplot(aes(x=color, y = carat, fill = color))+
+  stat_boxplot(geom = "errorbar", width = 0.3)+
+  geom_boxplot(color = "black", outlier.colour = "red",
+               outlier.size = 0.4)+
+  labs(title = "Carat distribution with respect to diamond color")+
+  theme(legend.position = "none") 
+
+#stitch both graphs
+color_price + color_carat
+
+```
+
+**Observations:**  
+
+1. D-F rated diamonds are colorless and of highest quality, yet as we move from D (best) to J (worst), the median diamond price increases!  
+
+```{r carat-color_quantile}
+print("Carat percentile of D-rated diamonds")
+quantile(df1_unique$carat[df1_unique$color == "D"],
+         probs = c(0,25,50,75,90,99)/100)
+print("Carat percentile of J-rated diamonds")
+quantile(df1_unique$carat[df1_unique$color == "J"],
+         probs = c(0,25,50,75,90,99)/100)
+```
+2. 99% D-rated diamonds are below 1.71 carats.  
+3. 50% of D-rated diamonds are below 0.5 carats whereas median carat for J-rated diamond is 1.11.  
+
+***We can observe from these readings that carat of a diamond seems to play a crucial role in price determination even though color, cut is of highest quality.***
+
+
+### **c) Clarity**
+
+```{r clarity_price_boxplot, fig.width=10, fig.height=6}
+
+#boxplot for price of diamone and their clarity
+clarity_price <- df1_unique %>% 
+                  ggplot(aes(x=clarity, y = price, fill = clarity))+
+                  stat_boxplot(geom = "errorbar", width = 0.3)+
+                  geom_boxplot(color = "black", outlier.colour = "red", outlier.size = 0.4)+
+                  labs(title = "price distribution with respect to clarity")+
+  theme(legend.position = "none")
+
+#boxplot for clarity and carat
+clarity_carat <- df1_unique %>% 
+                  ggplot(aes(x=clarity, y = carat, fill = clarity))+
+                  stat_boxplot(geom = "errorbar", width = 0.3)+
+                  geom_boxplot(color = "black", outlier.colour = "red", outlier.size = 0.4)+
+                  labs(title = "carat distribution with respect to clarity")+
+  theme(legend.position = "none")
+
+#stitch graphs
+clarity_price + clarity_carat
+```
+
+**Observation**  
+
+Even though 'IF' and 'VVS1' are diamonds with maximum brilliance, their median price is less than diamonds with low clarity rating! 
+
+**So, to summarize:**  
+
+- As the quality of diamonds increased within each rating category- cut, clarity, color, the median price decreased.  
+- This was somewhat unexpected but it also indicates that the price of a diamond cannot be estimated correctly if we know only one or two of these ratings.  
+- The weight of the diamond, carats, seems to play a more important role in price determination (ofc, along with these 3 qualities).
+
+
+### **5. Relationship between price and carat of diamonds**
+
+```{r scatter_plot}
+
+(cut_scatter <- df1_unique %>% 
+  ggplot(aes(x=carat, y=price, color = cut))+
+  geom_point()+
+  #scale_y_continuous(expand = expansion(mult = c(0,0.05)))+
+  labs(title = "As carat increases, prices tend to go up",
+       y = "price in USD"))
+
+```
+
+### **6. Correlation between features**
+
+The correlation matrix helps to quantify the dependency between all relevant features.  
+Since, depth_perc is calculated using length, width & depth values, these 3 features have been excluded.
+
+```{r}
+#select relevant features
+corr_dataset <- df1_unique %>% 
+                  select(cut, color, clarity,depth_perc,carat, price)
+```
+
+- There are 3 columns of type 'factor' in our data- color, cut & clarity.  
+- Color and Cut have levels in ascending order of the quality. They are ordered from worst to best. For e.g. Quality of diamond cut- "Fair" has level 1 < "Good" is level 2, and so on. Similarly, for clarity- "I1" is 1, ...,"IF" is 8, which is the best.  
+
+- This is not the case with colors column. It is ordered as "D" (1) < "E" (2) < ... < "J" (7). D is best rating but it has level of 1.  
+
+- I've changed the order from worst to best for color column below, i.e. "J" gets level 1, "D" gets level 7.  
+
+```{r}
+corr_dataset$color <- factor(corr_dataset$color,
+                             levels = c("J", "I", "H", "G", "F", "E", "D"), ordered = T)
+##checking the order
+#levels(corr_dataset$color)[7]
+
+```
+
+
+
+```{r}
+
+# Convert the factor to numeric
+#correlation matrix can be created with numeric values only
+#this replaces values like "ideal" with their ordering number.
+corr_dataset$color <- as.numeric(corr_dataset$color)
+corr_dataset$clarity <- as.numeric(corr_dataset$clarity)
+corr_dataset$cut <- as.numeric(corr_dataset$cut)
+```
+
+```{r corr_matrix}
+cor(corr_dataset)
+```
+
+```{r}
+#correlation graph
+visdat::vis_cor(corr_dataset)
+```
+
+
+## **Conclusion**
+
+- Correlation matrix shows that carat has a very strong positive relationship with price of diamonds.  
+- Other qualitative factors like color, cut, clarity have a weak relationship with price for this dataset.  
+- Carat seems to be the driving factor for price of diamonds.
