@@ -3,10 +3,8 @@ title: "San Francisco Building Permits Data Cleaning"
 author: "Shefali C."
 date: "2024-04-10"
 output: 
-      prettydoc::html_pretty:
-        theme: cayman
-        highlight: vignette
-        toc: true
+  rmdformats::readthedown:
+    toc_depth: 4
 ---
 
 ```{r setup, include=FALSE}
@@ -40,7 +38,7 @@ sf_data <- readr::read_csv(paste0(data_path, "/Building_Permits.csv"))
 ```
 
 
-## Data Cleaning Steps:  
+### Data Cleaning Steps:  
 
 ### 1. **Make column-names uniform-** 
 
