@@ -40,6 +40,7 @@ library(tm)
 library(knitr)
 library(kableExtra)
 library(formattable)
+library(mltools) #for one-hot encoding
 
 ```
   
@@ -459,6 +460,8 @@ verification_data <- data3 %>% group_by(host_identity_verified) %>%
 
 ```
 
+
+
 ```{r formatted-verification-tb}
 
 formattable(verification_data,
@@ -640,6 +643,36 @@ All leading, trailing and extra whitespaces in-between words get removed.
 ```{r}
 data3$house_rules <- trimws(data3$house_rules)
 ```
+
+```{r}
+unique(data3$host_identity_verified)
+```
+
+
+## **Data Preprocessing**  
+
+### 1. One-Hot Encoding 
+
+Each of the categorical columns will be encoded with 1 and 0s.  
+
+#### 1.1 Host Identity Verification  
+
+
+```{r}
+data4 <- data3 %>% 
+          mutate(status_verified = ifelse(host_identity_verified == "unconfirmed" | is.na(host_identity_verified), 0, 1),
+                 status_unconfirmed = ifelse(host_identity_verified == "verified" | is.na(host_identity_verified), 0, 1))
+
+```
+
+#### 1.2 Cancellation Policy
+
+```{r}
+# data4 <- data4 %>% 
+#           mutate(cancel_strict = ifelse(cancellation_policy))
+```
+
+
 
 
 
