@@ -16,3 +16,33 @@ Following are the variables and what they indicate:
 
 - **`spotify_playlist_reach`**- indicates potential audience size of a song in a playlist. Refers to total number of people who have access to (or follow) a playlist where this track is present.  
 - **``**
+
+1. **track**: The name of the song or track.
+2. **album_name**: The name of the album that the track is a part of.
+3. **artist**: The name of the artist or band that performed the track.
+4. **release_date**: The date when the track or album was officially released.
+5. **isrc**: The International Standard Recording Code, a unique identifier for each track.
+6. **all_time_rank**: The rank of the track based on its historical performance, possibly across multiple platforms or within a specific platform.
+7. **track_score**: A numerical score that might indicate the overall performance or quality of the track, possibly derived from various metrics.
+8. **spotify_streams**: The total number of times the track has been streamed on Spotify.
+9. **spotify_playlist_count**: The number of playlists on Spotify that include this track.
+10. **spotify_playlist_reach**: The potential audience size for the track on Spotify, as explained earlier.
+11. **spotify_popularity**: A score provided by Spotify that indicates the track's popularity, usually based on recent streams, playlist inclusion, and other factors.
+12. **you_tube_views**: The total number of times the track's official music video or related content has been viewed on YouTube.
+13. **you_tube_likes**: The total number of likes the track's video or related content has received on YouTube.
+14. **tik_tok_posts**: The number of TikTok videos that have used the track's audio.
+15. **tik_tok_likes**: The total number of likes on TikTok posts that feature the track.
+16. **tik_tok_views**: The total number of views on TikTok posts that use the track.
+17. **you_tube_playlist_reach**: The potential audience size for the track through playlists on YouTube.
+18. **apple_music_playlist_count**: The number of playlists on Apple Music that include this track.
+19. **air_play_spins**: The number of times the track has been played on traditional radio stations.
+20. **sirius_xm_spins**: The number of times the track has been played on SiriusXM satellite radio.
+21. **deezer_playlist_count**: The number of playlists on Deezer that include this track.
+22. **deezer_playlist_reach**: The potential audience size for the track through playlists on Deezer.
+23. **amazon_playlist_count**: The number of playlists on Amazon Music that include this track.
+24. **pandora_streams**: The total number of times the track has been streamed on Pandora.
+25. **pandora_track_stations**: The number of Pandora stations that have this track as a part of their playlist or rotation.
+26. **soundcloud_streams**: The total number of times the track has been streamed on SoundCloud.
+27. **shazam_counts**: The number of times users have identified the track using the Shazam app.
+28. **tidal_popularity**: A score or metric indicating the track’s popularity on Tidal, similar to Spotify's popularity metric.
+29. **explicit_track**: A boolean (TRUE/FALSE) indicating whether the track contains explicit content.
