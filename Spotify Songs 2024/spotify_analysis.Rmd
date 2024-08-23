@@ -1,0 +1,18 @@
+---
+title: "Spotify Songs 2024 analysis"
+author: "Shefali C."
+date: "2024-08-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This notebook is an analysis of Spotify dataset taken from kaggle. 
+Following are the variables and what they indicate:
+
+- **`spotify_playlist_reach`**- indicates potential audience size of a song in a playlist. Refers to total number of people who have access to (or follow) a playlist where this track is present.  
+- **``**
